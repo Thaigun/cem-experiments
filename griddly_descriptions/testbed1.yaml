@@ -1,0 +1,42 @@
+Version: "0.1"
+Environment:
+  Name: mean
+  Observers:
+    Sprite2D:
+      TileSize: 24
+      BackgroundTile: oryx/oryx_fantasy/floor9-3.png
+  Player:
+    AvatarObject: plr
+    Observer:
+      RotateWithAvatar: true
+      TrackAvatar: true
+      Height: 7
+      Width: 7
+  Levels:
+    - |
+      w w w w w w w w w w
+      w p . . . . . . . w
+      w . . . . w w w w w
+      w w w w w w w w w w
+
+Actions:
+- Name: move
+  Behaviours:
+  - Src:
+      Object: plr
+      Commands:
+      - mov: _dest
+    Dst:
+      Object: _empty
+
+Objects:
+- Name: wall
+  MapCharacter: w
+  Observers:
+    Sprite2D:
+    - Image: oryx/oryx_fantasy/wall9-3.png
+- Name: plr
+  MapCharacter: p
+  Observers:
+    Sprite2D:
+    - Image: oryx/oryx_fantasy/avatars/genie1.png
