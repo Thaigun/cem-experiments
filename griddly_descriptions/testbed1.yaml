@@ -14,10 +14,15 @@ Environment:
       Width: 7
   Levels:
     - |
-      w w w w w w w w w w
-      w p . . . . . . . w
-      w . . . . w w w w w
-      w w w w w w w w w w
+      w w w w w w w w w 
+      w . . . N . . . w
+      w . . . . . . . w
+      w . . . . . . . w
+      w . . . . . . . w
+      w . w w w w w . w
+      w . . . . . . . w
+      w . . . P . . . w
+      w w w w w w w w w
 
 Actions:
 - Name: move
@@ -28,6 +33,28 @@ Actions:
       - mov: _dest
     Dst:
       Object: _empty
+  - Src:
+      Object: plr
+      Commands:
+      - mov: _dest
+    Dst:
+      Object: npc
+      Commands:
+      - cascade: _dest
+  - Src:
+      Object: npc
+      Commands:
+      - mov: _dest
+    Dst:
+      Object: _empty
+  - Src:
+      Object: npc
+      Commands:
+      - mov: _dest
+    Dst:
+      Object: plr
+      Commands:
+      - cascade: _dest
 
 Objects:
 - Name: wall
@@ -36,7 +63,12 @@ Objects:
     Sprite2D:
     - Image: oryx/oryx_fantasy/wall9-3.png
 - Name: plr
-  MapCharacter: p
+  MapCharacter: P
   Observers:
     Sprite2D:
     - Image: oryx/oryx_fantasy/avatars/genie1.png
+- Name: npc
+  MapCharacter: N
+  Observers:
+    Sprite2D:
+    - Image: oryx/oryx_fantasy/avatars/priest1.png
