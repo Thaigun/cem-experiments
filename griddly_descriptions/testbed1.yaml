@@ -7,68 +7,70 @@ Environment:
       BackgroundTile: oryx/oryx_fantasy/floor9-3.png
   Player:
     AvatarObject: plr
+    Count: 2
     Observer:
       RotateWithAvatar: true
       TrackAvatar: true
       Height: 7
       Width: 7
+  Termination:
+    Lose:
+      - eq: [plr:count, 0]
   Levels:
     - |
       w w w w w w w w w 
-      w . . . N . . . w
+      w . . . P2 . . . w
       w . . . . . . . w
       w . . . . . . . w
       w . . . . . . . w
       w . w w w w w . w
       w . . . . . . . w
-      w . . . P . . . w
+      w . . . P1 . . . w
       w w w w w w w w w
 
 Actions:
-- Name: move
-  Behaviours:
-  - Src:
-      Object: plr
-      Commands:
-      - mov: _dest
-    Dst:
-      Object: _empty
-  - Src:
-      Object: plr
-      Commands:
-      - mov: _dest
-    Dst:
-      Object: npc
-      Commands:
-      - cascade: _dest
-  - Src:
-      Object: npc
-      Commands:
-      - mov: _dest
-    Dst:
-      Object: _empty
-  - Src:
-      Object: npc
-      Commands:
-      - mov: _dest
-    Dst:
-      Object: plr
-      Commands:
-      - cascade: _dest
+  - Name: move
+    Behaviours:
+      - Src:
+          Object: plr
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: _empty
+      - Src:
+          Object: plr
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: plr
+          Commands:
+            - cascade: _dest
+  - Name: melee
+    Behaviours:
+      - Src:
+          Object: plr
+        Dst:
+          Object: plr
+          Commands:
+            - decr: health
+            - eq:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
 
 Objects:
-- Name: wall
-  MapCharacter: w
-  Observers:
-    Sprite2D:
-    - Image: oryx/oryx_fantasy/wall9-3.png
-- Name: plr
-  MapCharacter: P
-  Observers:
-    Sprite2D:
-    - Image: oryx/oryx_fantasy/avatars/genie1.png
-- Name: npc
-  MapCharacter: N
-  Observers:
-    Sprite2D:
-    - Image: oryx/oryx_fantasy/avatars/priest1.png
+  - Name: wall
+    MapCharacter: w
+    Observers:
+      Sprite2D:
+        - Image: oryx/oryx_fantasy/wall9-3.png
+  - Name: plr
+    MapCharacter: P
+    Variables:
+      - Name: health
+        InitialValue: 2
+    Observers:
+      Sprite2D:
+        - Image: oryx/oryx_fantasy/avatars/genie1.png
+        - Image: oryx/oryx_fantasy/avatars/priest1.png
+        
