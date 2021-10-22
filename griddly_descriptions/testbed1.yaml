@@ -57,6 +57,35 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
+  - Name: ranged
+    Behaviours:
+      - Src:
+          Object: plr
+        Dst:
+          Object: _empty
+          Commands:
+            - cascade: _dest
+      - Src:
+          Object: plr
+        Dst:
+          Object: plr
+          Commands:
+            - decr: health
+            - eq:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
+  - Name: heal
+    Behaviours:
+      - Src:
+          Object: plr
+        Dst:
+          Object: plr
+          Commands:
+            - lt:
+                Arguments: [health, 2]            
+                Commands:
+                  - incr: health
 
 Objects:
   - Name: wall

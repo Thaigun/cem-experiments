@@ -1,19 +1,5 @@
-import gym
 import pygame
-import matplotlib
-import argparse
-from gym import logger
-
-try:
-    matplotlib.use("TkAgg")
-    import matplotlib.pyplot as plt
-except ImportError as e:
-    logger.warn("failed to set matplotlib backend, plotting will not work: %s" % str(e))
-    plt = None
-
-from collections import deque
 from pygame.locals import VIDEORESIZE
-
 
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
@@ -142,56 +128,3 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
         pygame.display.flip()
         clock.tick(fps)
     pygame.quit()
-
-
-class PlayPlot(object):
-    def __init__(self, callback, horizon_timesteps, plot_names):
-        self.data_callback = callback
-        self.horizon_timesteps = horizon_timesteps
-        self.plot_names = plot_names
-
-        assert plt is not None, "matplotlib backend failed, plotting will not work"
-
-        num_plots = len(self.plot_names)
-        self.fig, self.ax = plt.subplots(num_plots)
-        if num_plots == 1:
-            self.ax = [self.ax]
-        for axis, name in zip(self.ax, plot_names):
-            axis.set_title(name)
-        self.t = 0
-        self.cur_plot = [None for _ in range(num_plots)]
-        self.data = [deque(maxlen=horizon_timesteps) for _ in range(num_plots)]
-
-    def callback(self, obs_t, obs_tp1, action, rew, done, info):
-        points = self.data_callback(obs_t, obs_tp1, action, rew, done, info)
-        for point, data_series in zip(points, self.data):
-            data_series.append(point)
-        self.t += 1
-
-        xmin, xmax = max(0, self.t - self.horizon_timesteps), self.t
-
-        for i, plot in enumerate(self.cur_plot):
-            if plot is not None:
-                plot.remove()
-            self.cur_plot[i] = self.ax[i].scatter(
-                range(xmin, xmax), list(self.data[i]), c="blue"
-            )
-            self.ax[i].set_xlim(xmin, xmax)
-        plt.pause(0.000001)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--env",
-        type=str,
-        default="MontezumaRevengeNoFrameskip-v4",
-        help="Define Environment",
-    )
-    args = parser.parse_args()
-    env = gym.make(args.env)
-    play(env, zoom=4, fps=60)
-
-
-if __name__ == "__main__":
-    main()
