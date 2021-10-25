@@ -21,7 +21,7 @@ Environment:
       Width: 7
   Termination:
     Lose:
-      - lte: [plr:count, 1]
+      - lte: [plr:count, 0]
   Levels:
     - |
       w w w w w w w w w 
@@ -59,7 +59,7 @@ Actions:
       Relative: true
       Inputs:
         1:
-          VectorToDest: [0, 1]
+          VectorToDest: [0, -1]
     Behaviours:
       - Src:
           Object: plr
@@ -77,7 +77,7 @@ Actions:
       Relative: true
       Inputs:
         1:
-          VectorToDest: [0, 1]
+          VectorToDest: [0, -1]
     Behaviours:
       - Src:
           Object: plr
@@ -101,7 +101,6 @@ Actions:
             - decr: range
             - exec:
                 Action: ranged_projectile
-                Delay: 1
         Dst:
           Object: [_empty, projectile]
       - Src:
@@ -128,7 +127,7 @@ Actions:
       Relative: true
       Inputs:
         1:
-          VectorToDest: [0, 1]
+          VectorToDest: [0, -1]
     Behaviours:
       - Src:
           Object: plr

@@ -78,10 +78,10 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
             env_done = False
             obs = env.reset()
         else:
-            action = keys_to_action.get(tuple(sorted(pressed_keys)), 0)
+            action = keys_to_action.get(tuple(sorted(pressed_keys)), [0, 0])
             prev_obs = obs
-            if action != 0:
-                obs, rew, env_done, info = env.step([[0, action], [0, 0]])
+            if action[1] != 0:
+                obs, rew, env_done, info = env.step([action, [0, 0]])
                 if callback is not None:
                     callback(env, prev_obs, obs, action, rew, env_done, info)
         if obs is not None:
