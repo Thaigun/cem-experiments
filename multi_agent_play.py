@@ -12,26 +12,6 @@ def display_arr(screen, arr, video_size, transpose):
 def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=None):
     """Allows one to play the game using keyboard.
 
-    To simply play the game use:
-
-        play(gym.make("Pong-v4"))
-
-    Above code works also if env is wrapped, so it's particularly useful in
-    verifying that the frame-level preprocessing does not render the game
-    unplayable.
-
-    If you wish to plot real time statistics as you play, you can use
-    gym.utils.play.PlayPlot. Here's a sample code for plotting the reward
-    for last 5 second of gameplay.
-
-        def callback(obs_t, obs_tp1, action, rew, done, info):
-            return [rew,]
-        plotter = PlayPlot(callback, 30 * 5, ["reward"])
-
-        env = gym.make("Pong-v4")
-        play(env, callback=plotter.callback)
-
-
     Arguments
     ---------
     env: gym.Env
@@ -47,6 +27,7 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
     callback: lambda or None
         Callback if a callback is provided it will be executed after
         every step. It takes the following input:
+            env: the environment
             obs_t: observation before performing action
             obs_tp1: observation after performing action
             action: action that was executed
@@ -66,7 +47,7 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
         If None, default key_to_action mapping for that env is used, if provided.
     """
     env.reset()
-    rendered = env.render(mode="rgb_array")
+    rendered = env.render(observer="global", mode="rgb_array")
 
     if keys_to_action is None:
         if hasattr(env, "get_keys_to_action"):
@@ -102,9 +83,9 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
             if action != 0:
                 obs, rew, env_done, info = env.step([[0, action], [0, 0]])
                 if callback is not None:
-                    callback(prev_obs, obs, action, rew, env_done, info)
+                    callback(env, prev_obs, obs, action, rew, env_done, info)
         if obs is not None:
-            rendered = env.render(mode="rgb_array")
+            rendered = env.render(observer="global", mode="rgb_array")
             display_arr(screen, rendered, transpose=transpose, video_size=video_size)
 
         # process pygame events

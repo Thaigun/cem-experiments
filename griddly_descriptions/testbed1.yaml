@@ -1,10 +1,16 @@
 Version: "0.1"
+
+# Define the environment
 Environment:
   Name: mean
   Observers:
     Sprite2D:
       TileSize: 24
       BackgroundTile: oryx/oryx_fantasy/floor9-3.png
+    Vector:
+      IncludePlayerId: true
+      IncludeRotation: true
+      IncludeVariables: true
   Player:
     AvatarObject: plr
     Count: 2
@@ -15,7 +21,7 @@ Environment:
       Width: 7
   Termination:
     Lose:
-      - eq: [plr:count, 0]
+      - lte: [plr:count, 1]
   Levels:
     - |
       w w w w w w w w w 
@@ -28,6 +34,7 @@ Environment:
       w . . . P1 . . . w
       w w w w w w w w w
 
+# Available action options 
 Actions:
   - Name: move
     Behaviours:
@@ -35,17 +42,24 @@ Actions:
           Object: plr
           Commands:
             - mov: _dest
+            - rot: _dir
         Dst:
           Object: _empty
       - Src:
           Object: plr
           Commands:
             - mov: _dest
+            - rot: _dir
         Dst:
           Object: plr
           Commands:
             - cascade: _dest
   - Name: melee
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, 1]
     Behaviours:
       - Src:
           Object: plr
@@ -57,25 +71,64 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
+
   - Name: ranged
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, 1]
     Behaviours:
       - Src:
           Object: plr
         Dst:
           Object: _empty
           Commands:
-            - cascade: _dest
+            - spawn: projectile
+
+  - Name: ranged_projectile
+    InputMapping:
+      Internal: true
+    Behaviours:
       - Src:
-          Object: plr
+          Object: projectile
+          Commands:
+            - mov: _dest
+            - eq:
+                Arguments: [range, 0]
+                Commands:
+                  - remove: true
+            - decr: range
+            - exec:
+                Action: ranged_projectile
+                Delay: 1
+        Dst:
+          Object: [_empty, projectile]
+      - Src:
+          Object: projectile
+          Commands:
+            - remove: true
+        Dst:
+          Object: wall
+      - Src:
+          Object: projectile
+          Commands:
+            - remove: true
         Dst:
           Object: plr
           Commands:
             - decr: health
-            - eq:
+            - lte:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
+
   - Name: heal
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, 1]
     Behaviours:
       - Src:
           Object: plr
@@ -87,6 +140,7 @@ Actions:
                 Commands:
                   - incr: health
 
+# Objects of the world
 Objects:
   - Name: wall
     MapCharacter: w
@@ -101,5 +155,14 @@ Objects:
     Observers:
       Sprite2D:
         - Image: oryx/oryx_fantasy/avatars/genie1.png
-        - Image: oryx/oryx_fantasy/avatars/priest1.png
-        
+        - Image: oryx/oryx_fantasy/avatars/priest1.png        
+  - Name: projectile
+    MapCharacter: x
+    InitialActions:
+      - Action: ranged_projectile
+    Variables:
+      - Name: range
+        InitialValue: 3
+    Observers:
+      Sprite2D:
+        - Image: oryx/oryx_fantasy/fire-1.png
