@@ -15,10 +15,8 @@ Environment:
     AvatarObject: plr
     Count: 2
     Observer:
-      RotateWithAvatar: true
-      TrackAvatar: true
-      Height: 7
-      Width: 7
+      RotateWithAvatar: false
+      TrackAvatar: false
   Termination:
     Lose:
       - lte: [plr:count, 0]
