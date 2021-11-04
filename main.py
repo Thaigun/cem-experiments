@@ -3,10 +3,9 @@ from multi_agent_play import play
 from griddly import GymWrapperFactory, gd
 import numpy as np
 import random
+import empowerment_maximization
 
-from griddly.util.state_hash import StateHasher
-
-def make_move(env, prev_obs, obs, action, rew, env_done, info):
+def make_random_move(env, prev_obs, obs, action, rew, env_done, info):
     available_actions = env.game.get_available_actions(2)
     if len(available_actions) == 0:
         return
@@ -19,6 +18,15 @@ def make_move(env, prev_obs, obs, action, rew, env_done, info):
 
     random_action = random.choice(possible_action_combos)
     env.step([[0,0], random_action])
+
+
+def maximise_empowerment(env, prev_obs, obs, action, rew, env_done, info):
+    if (env_done):
+        return
+    empowerment_agent = empowerment_maximization.EMVanillaNStepAgent(2, 1, env.clone(), 1)
+    action = empowerment_agent.act(env)
+    env.step([[0,0], action])
+
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()
@@ -40,31 +48,4 @@ if __name__ == '__main__':
         (ord('e'),): [action_names.index('ranged'), 1],
         }
     clone_env = env.clone()
-    play(env, fps=10, zoom=2, callback=make_move, keys_to_action=key_mapping)
-
-    '''
-    env.reset()
-    actions = [env.action_space.sample() for _ in range(10000)]
-    for action in actions:
-        obs, reward, done, info = env.step(action)
-        c_obs, c_reward, c_done, c_info = clone_env.step(action)
-
-        assert np.array_equal(obs, c_obs)
-        assert reward == c_reward
-        assert done == c_done
-        assert info == c_info
-
-        env_state = env.get_state()
-        cloned_state = clone_env.get_state()
-
-        env_state_hasher = StateHasher(env_state)
-        cloned_state_hasher = StateHasher(cloned_state)
-
-        env_state_hash = env_state_hasher.hash()
-        cloned_state_hash = cloned_state_hasher.hash()
-        assert env_state_hash == cloned_state_hash
-
-        if done and c_done:
-            env.reset()
-            clone_env.reset()
-    '''
+    play(env, fps=10, zoom=2, callback=maximise_empowerment, keys_to_action=key_mapping)

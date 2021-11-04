@@ -8,6 +8,7 @@ By Christian Guckelsberger
 import logging
 import gym
 import numpy as np
+from griddly import gd
 
 MAX_FLOAT = MAX_FLOAT = np.finfo(np.float32).max
 EPSILON_1 = 1e-5
@@ -131,20 +132,18 @@ class EMVanillaNStepAgent():
         Initialise this agent
         Args:
             nstep -- number of steps lookahead into the future
-            env -- the environment; for EXPLICIT FORWARD MODEL CALLS.
             one_step_anticipation -- by default, the agent evaluates empowerment of states
                         one step ahead, and then moves into state with maximum empowerment.
                         Deactivating this means that only the present state is being evaluated.
         """
 
-        # Store reference to environment for explicit forward model calls
-        assert isinstance(env, gym.Env)
-        self._env = env
-
-        assert isinstance(env.observation_space, gym.Space)
-        assert isinstance(env.action_space, gym.Space)
         self._observation_space = env.observation_space
-        self._action_space = env.action_space
+        self._action_space = [(0, 0)] # Include the idling action
+        for action_type_index, action_name in enumerate(env.action_names):
+            for action_id in range(1, env.num_action_ids[action_name]):
+                self._action_space.append((action_type_index, action_id))
+
+        #env.num_action_ids
 
         self._n_step = n_step
         self._samples = samples
@@ -159,11 +158,11 @@ class EMVanillaNStepAgent():
         if done:
             self._logger.info("Completed episode.")
 
-    def sample(self, pre_observation, action, samples, hash_decode):
+    def sample(self, env, action_idx, samples, hash_decode):
         """
         Sample action transitions
         Args:
-            pre_observation: previous observation
+            env: previous env
             action: action to perform
             samples: number of samples ot perform
             hash_decode -- a dictionary mapping state hashes to state values
@@ -174,15 +173,16 @@ class EMVanillaNStepAgent():
 
         p_sample = 1.0 / samples
         for _ in range(0, samples):
-            state_new, _, _ = self._env.try_step(pre_observation, action)
-            s_new = self._env.hash(state_new)
-            hash_decode[s_new] = state_new
+            new_env = env.clone()
+            new_env.step([[0, 0], list(self._action_space[action_idx])])
+            s_new = new_env.get_state()['Hash']
+            hash_decode[s_new] = new_env
             p_s = pd_s.get(s_new, 0.0)
             pd_s[s_new] = p_s + p_sample
 
         return (pd_s, hash_decode)
 
-    def forward(self, state, n_step, hash_decode):
+    def forward(self, env, n_step, hash_decode):
         """
         Expands forward model for n step lookahead into distribution
         p(S_{t+n}|S_t, A^n_t = (A_t,A_t+1,...A_{t+n-1}))
@@ -197,14 +197,14 @@ class EMVanillaNStepAgent():
             a 2-dim sparse array, mapping from all n-step action sequences to follow
             up-states n steps away i.e. p(S_{t+n}|A^n_t, s_t)
         """
-        nA = self._action_space.n
+        nA = len(self._action_space)
         nASeq = pow(nA, n_step)
         cpd_s_a_nstep = {key: None for key in range(0, nASeq)}
 
         # Start from given state
         # Keep record of state hashes
-        s_init = self._env.hash(state)
-        hash_decode[s_init] = state
+        s_init = env.get_state()['Hash']
+        hash_decode[s_init] = env
         cpd_s_a_nstep[0] = {s_init : 1.0}
         state_ix_max = 0
         for n in range(0, n_step):
@@ -236,7 +236,7 @@ class EMVanillaNStepAgent():
 
         return (cpd_s_a_nstep, hash_decode)
 
-    def _determine_states(self, observation):
+    def _determine_states(self, env):
         """Determine the states to calculate empowerment on.
 
         Description:
@@ -256,10 +256,10 @@ class EMVanillaNStepAgent():
         cpd_s_A = {}
         hash_decode = {}
         if self._one_step_anticipation:
-            (cpd_s_A, hash_decode) = self.forward(observation, 1, hash_decode)
+            (cpd_s_A, hash_decode) = self.forward(env, 1, hash_decode)
         else:
-            s_init = self._env.hash(observation)
-            hash_decode[s_init] = observation
+            s_init = env.get_state()['Hash']
+            hash_decode[s_init] = env
             cpd_s_A = {
                 0: {s_init:1.0},
                 1: {s_init:1.0},
@@ -280,7 +280,7 @@ class EMVanillaNStepAgent():
         Returns e_s
         """
         e_s = {} # Empowerment in state s
-        for a in range(0, self._action_space.n):
+        for a in range(0, len(self._action_space)):
             for sNew in cpd_s_A[a]:
                 # 2.1) Look up if empowerment for this state has been calculated before (dictionary)
                 if sNew in e_s:
@@ -306,8 +306,8 @@ class EMVanillaNStepAgent():
 
         Returns e_A
         """
-        e_A = np.zeros(self._action_space.n)
-        for a in range(0, self._action_space.n):
+        e_A = np.zeros(len(self._action_space))
+        for a in range(0, len(self._action_space)):
             for s, p_s in cpd_s_A[a].items():
                 e_A[a] += p_s * e_s[s]
 
@@ -334,23 +334,18 @@ class EMVanillaNStepAgent():
 
         return aNew
 
-    def act(self, observation):
+    def act(self, env):
         """
         Return the next action the agent should take.
         Args:
-            observation -- the most recent observed state
+            env -- the most recent environment state
 
         Returns:
             a scalar action, randomly picked
         """
-        cpd_s_A, hash_decode = self._determine_states(observation)
+        cpd_s_A, hash_decode = self._determine_states(env)
         e_s = self._initialize_empowerment(cpd_s_A, hash_decode)
         e_A = self._calculate_expected_empowerment(e_s, cpd_s_A)
         action = self._greedy_action(e_A)
 
-        # For visualisation purposes only: add state-reward pairs to environment
-        for (s, reward) in e_s.items():
-            state = hash_decode[s]
-            self._env.record_reward(state, reward)
-
-        return action
+        return list(self._action_space[action])
