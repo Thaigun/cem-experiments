@@ -48,4 +48,4 @@ if __name__ == '__main__':
         (ord('e'),): [action_names.index('ranged'), 1],
         }
     clone_env = env.clone()
-    play(env, fps=10, zoom=2, callback=maximise_empowerment, keys_to_action=key_mapping)
+    play(env, zoom=2, callback=maximise_empowerment, keys_to_action=key_mapping)
