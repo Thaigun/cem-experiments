@@ -143,8 +143,6 @@ class EMVanillaNStepAgent():
             for action_id in range(1, env.num_action_ids[action_name]):
                 self._action_space.append((action_type_index, action_id))
 
-        #env.num_action_ids
-
         self._n_step = n_step
         self._samples = samples
         self._one_step_anticipation = one_step_anticipation
@@ -206,7 +204,6 @@ class EMVanillaNStepAgent():
         s_init = env.get_state()['Hash']
         hash_decode[s_init] = env
         cpd_s_a_nstep[0] = {s_init : 1.0}
-        state_ix_max = 0
         for n in range(0, n_step):
             # Delta specifies the index shift between trajectories on this level.
             # The further we go down the tree, the more trajectories there are, the
@@ -225,8 +222,6 @@ class EMVanillaNStepAgent():
                         (pd_sNew, hash_decode) = self.sample(state, a, self._samples, hash_decode)
 
                         for s_new, p_s_new in pd_sNew.items():
-                            if s_new > state_ix_max:
-                                state_ix_max = s_new
                             # get() returns 0.0 as default probability if s_new not present
                             p_Agg = pd_s_expanded.get(s_new, 0.0)
                             pd_s_expanded[s_new] = p_Agg + (p_s_new * p_s)
@@ -260,14 +255,10 @@ class EMVanillaNStepAgent():
         else:
             s_init = env.get_state()['Hash']
             hash_decode[s_init] = env
-            cpd_s_A = {
-                0: {s_init:1.0},
-                1: {s_init:1.0},
-                2: {s_init:1.0},
-                3: {s_init:1.0},
-                4: {s_init:1.0},
-                5: {s_init:1.0}
-            }
+            action_count = len(self._action_space)
+            # for action count, add initial value 1.0
+            for a in range(action_count):
+                cpd_s_A[a] = {s_init: 1.0}
 
         return cpd_s_A, hash_decode
 
