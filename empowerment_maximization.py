@@ -173,7 +173,8 @@ class EMVanillaNStepAgent():
         for _ in range(0, samples):
             new_env = env.clone()
             new_env.step([[0, 0], list(self._action_space[action_idx])])
-            s_new = new_env.get_state()['Hash']
+            new_state = new_env.get_state()
+            s_new = new_state['Hash']
             hash_decode[s_new] = new_env
             p_s = pd_s.get(s_new, 0.0)
             pd_s[s_new] = p_s + p_sample
@@ -318,7 +319,7 @@ class EMVanillaNStepAgent():
         aNew = -1
         e_A = e_A.round(decimals=len(str(EPSILON_1)))
         if e_A.max()-e_A.min() < EPSILON_1:
-            aNew = self.np_random.integers(self._action_space.n)
+            aNew = self.np_random.integers(len(self._action_space))
         else:
             aMax = np.argwhere(e_A == np.amax(e_A)).flatten()
             aNew = self.np_random.choice(aMax)
@@ -337,6 +338,7 @@ class EMVanillaNStepAgent():
         cpd_s_A, hash_decode = self._determine_states(env)
         e_s = self._initialize_empowerment(cpd_s_A, hash_decode)
         e_A = self._calculate_expected_empowerment(e_s, cpd_s_A)
+        #print(e_A[0])
         action = self._greedy_action(e_A)
 
         return list(self._action_space[action])

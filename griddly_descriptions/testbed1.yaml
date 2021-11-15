@@ -52,25 +52,8 @@ Actions:
           Object: plr
           Commands:
             - cascade: _dest
-  - Name: melee
-    InputMapping:
-      Relative: true
-      Inputs:
-        1:
-          VectorToDest: [0, -1]
-    Behaviours:
-      - Src:
-          Object: plr
-        Dst:
-          Object: plr
-          Commands:
-            - decr: health
-            - eq:
-                Arguments: [health, 0]
-                Commands:
-                  - remove: true
 
-  - Name: ranged
+  - Name: attack
     InputMapping:
       Relative: true
       Inputs:
@@ -83,6 +66,16 @@ Actions:
           Object: _empty
           Commands:
             - spawn: projectile
+      - Src:
+          Object: plr
+        Dst:
+          Object: plr
+          Commands:
+            - decr: health
+            - lte:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
 
   - Name: ranged_projectile
     InputMapping:
@@ -92,21 +85,17 @@ Actions:
           Object: projectile
           Commands:
             - mov: _dest
-            - eq:
-                Arguments: [range, 0]
-                Commands:
-                  - remove: true
             - decr: range
             - exec:
                 Action: ranged_projectile
         Dst:
-          Object: [_empty, projectile]
+          Object: _empty
       - Src:
           Object: projectile
           Commands:
             - remove: true
         Dst:
-          Object: wall
+          Object: [wall, projectile]
       - Src:
           Object: projectile
           Commands:

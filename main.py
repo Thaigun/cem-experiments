@@ -44,8 +44,10 @@ if __name__ == '__main__':
         (ord('q'),): [0, 0],
         # Rest of the actions don't have a direction for now
         (ord('h'),): [action_names.index('heal'), 1],
-        (ord(' '),): [action_names.index('melee'), 1],
-        (ord('e'),): [action_names.index('ranged'), 1],
+        (ord(' '),): [action_names.index('attack'), 1],
         }
+    print('move', action_names.index('move'))
+    print('heal', 4 + action_names.index('heal'))
+    print('attack', 4 + action_names.index('attack'))
     clone_env = env.clone()
-    play(env, zoom=2, callback=maximise_empowerment, keys_to_action=key_mapping)
+    play(env, zoom=2, fps=30, callback=maximise_empowerment, keys_to_action=key_mapping)
