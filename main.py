@@ -23,8 +23,9 @@ def make_random_move(env, prev_obs, obs, action, rew, env_done, info):
 def maximise_empowerment(env, prev_obs, obs, action, rew, env_done, info):
     if (env_done):
         return
-    empowerment_agent = empowerment_maximization.EMVanillaNStepAgent(2, 1, env.clone(), 1)
-    action = empowerment_agent.act(env)
+    clone_env = env.clone()
+    empowerment_agent = empowerment_maximization.EMVanillaNStepAgent(2, 2, clone_env, 1)
+    action = empowerment_agent.act(clone_env)
     env.step([[0,0], action])
 
 
@@ -50,4 +51,4 @@ if __name__ == '__main__':
     print('heal', 4 + action_names.index('heal'))
     print('attack', 4 + action_names.index('attack'))
     clone_env = env.clone()
-    play(env, zoom=2, fps=30, callback=maximise_empowerment, keys_to_action=key_mapping)
+    play(env, fps=30, zoom=3, callback=maximise_empowerment, keys_to_action=key_mapping)
