@@ -127,7 +127,7 @@ class EMVanillaNStepAgent():
     Then selects action with maximum expected empowerment
     """
 
-    def __init__(self, n_step, samples, env, seed, one_step_anticipation=True):
+    def __init__(self, n_step, samples, env, one_step_anticipation=True, player_id=2):
         """
         Initialise this agent
         Args:
@@ -143,6 +143,7 @@ class EMVanillaNStepAgent():
             for action_id in range(1, env.num_action_ids[action_name]):
                 self._action_space.append((action_type_index, action_id))
 
+        self._player_id = player_id
         self._n_step = n_step
         self._samples = samples
         self._one_step_anticipation = one_step_anticipation
@@ -155,6 +156,13 @@ class EMVanillaNStepAgent():
     def observe(self, pre_observation, action, reward, post_observation, done):
         if done:
             self._logger.info("Completed episode.")
+
+    def build_action(self, action):
+        if (self._player_id == 1):
+            return [action, [0,0]]
+        elif (self._player_id == 2):
+            return [[0,0], action]
+        return [[0,0],[0,0]]
 
     def sample(self, env, action_idx, samples, hash_decode):
         """
@@ -172,7 +180,7 @@ class EMVanillaNStepAgent():
         p_sample = 1.0 / samples
         for _ in range(0, samples):
             new_env = env.clone()
-            new_env.step([[0, 0], list(self._action_space[action_idx])])
+            new_env.step(self.build_action(list(self._action_space[action_idx])))
             new_state = new_env.get_state()
             s_new = new_state['Hash']
             hash_decode[s_new] = new_env
