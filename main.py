@@ -4,6 +4,7 @@ from griddly import GymWrapperFactory, gd
 import numpy as np
 import random
 import empowerment_maximization
+from griddly_cem_agent import cem_action
 
 def make_random_move(env, prev_obs, obs, action, rew, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -28,6 +29,10 @@ def maximise_empowerment(env, prev_obs, obs, action, rew, env_done, info):
     action = empowerment_agent.act(clone_env)
     env.step([[0,0], action])
 
+    
+def maximise_cem(env, prev_obs, obs, action, rew, env_done, info):
+    action = cem_action(env, 2, 1, [(1,1), (2,2), (2,1)], [1, 1, 1])
+    env.step([[0,0], action])
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()
@@ -51,4 +56,4 @@ if __name__ == '__main__':
     print('heal', 4 + action_names.index('heal'))
     print('attack', 4 + action_names.index('attack'))
     clone_env = env.clone()
-    play(env, fps=30, zoom=3, callback=maximise_empowerment, keys_to_action=key_mapping)
+    play(env, fps=30, zoom=3, callback=maximise_cem, keys_to_action=key_mapping)
