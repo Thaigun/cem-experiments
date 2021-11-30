@@ -17,8 +17,8 @@ Environment:
     Observer:
       RotateWithAvatar: true
       TrackAvatar: true
-      Height: 7
-      Width: 7
+      Height: 5
+      Width: 5
   Termination:
     Lose:
       - lte: [plr:count, 0]
