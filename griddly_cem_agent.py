@@ -119,6 +119,58 @@ def build_distribution(env_hash, mapping, action_seq, action_stepper, action_spa
     return state_distribution_nstep
 
 
+def calculate_state_empowerment(state, hash_decode, mapping, action_combinations, actuator, perceptor, action_space, player_count, action_seq_length):
+    # A list of end state probabilities, for each action combination. A list of dictionaries.
+    states_for_action_seqs = [None] * len(action_combinations)
+    for combo_idx, action_combo in enumerate(action_combinations):
+        states_for_action_seqs[combo_idx] = build_distribution(state, mapping, action_combo, 0, action_space, actuator, actuator, player_count, action_seq_length * player_count)
+    
+    # Covert the end states into observations of the active player (actuator of the empowerment pair)
+    states_as_obs = [{} for _ in states_for_action_seqs]
+    for sequence_id, cpd_states in enumerate(states_for_action_seqs):
+        for state_hash in cpd_states:
+            latest_obs = hash_decode[state_hash]._player_last_observation[perceptor-1]
+            hashed_obs = hash_obs(latest_obs)
+            # Multiple states may lead to same observation, combine them if so
+            if hashed_obs not in states_as_obs[sequence_id]:
+                states_as_obs[sequence_id][hashed_obs] = 0
+            states_as_obs[sequence_id][hashed_obs] += cpd_states[state_hash]
+    # Use the Blahut-Arimoto algorithm to calculate the optimal probability distribution
+    pd_a_opt = empowerment_maximization.blahut_arimoto(states_as_obs, np.random.default_rng())
+    # Use the optimal distribution to calculate the mutual information (empowerement)
+    empowerment = empowerment_maximization.mutual_information(pd_a_opt, states_as_obs)
+    return empowerment
+
+
+def calculate_expected_empowerments(env, mapping, action_seq_length, anticipation_step_count, action_space, active_agent, emp_pair, hash_decode):
+    '''
+    Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
+    '''
+    # Find the probability of each follow-up state after anticipation_step_count steps, for each action from the current state. p(S_{t+m}|s_t, a_t), m=anticipation_step_count.
+    anticipation = [None] * len(action_space)
+    for action_idx, action in enumerate(action_space):
+        anticipation[action_idx] = build_distribution(env.get_state()['Hash'], mapping, [action_idx], 0, action_space, active_agent, active_agent, env.player_count, anticipation_step_count)
+    # Make a flat list of all the reachable states
+    reachable_states = []
+    for a in anticipation:
+        for s_hash in a:
+            reachable_states.append(s_hash)
+    # All possible action combinations of length 'step'
+    action_combinations = [list(combo) for combo in product(range(len(action_space)), repeat=action_seq_length)]
+    # Save the expected empowerment for each anticipated state
+    state_empowerments = {}
+    # Calculate the n-step empowerment for each state that was found earlier
+    for state in reachable_states:
+        empowerment = calculate_state_empowerment(state, hash_decode, mapping, action_combinations, emp_pair[0], emp_pair[1], action_space, env.player_count, action_seq_length)
+        state_empowerments[state] = empowerment
+    # Calculate the expected empowerment for each action that can be taken from the current state
+    expected_empowerments = np.zeros(len(action_space))
+    for a in range(0, len(action_space)):
+        for s, p_s in anticipation[a].items():
+            expected_empowerments[a] += p_s * state_empowerments[s]
+    return expected_empowerments
+
+
 def cem_action(env, current_player, action_seq_length, empowerment_pairs, empowerment_weights, samples=1):
     '''
     env: the game environment
@@ -153,53 +205,7 @@ def cem_action(env, current_player, action_seq_length, empowerment_pairs, empowe
     mapping = build_mapping(env, hash_decode, max(anticipation_step_counts) + action_seq_length * env.player_count, action_space, current_player, samples)
 
     for pair_i, emp_pair in enumerate(empowerment_pairs):
-        anticipation_step_count = anticipation_step_counts[pair_i]
-        
-        # Find the probability of each follow-up state after anticipation_step_count steps, for each action from the current state. p(S_{t+m}|s_t, a_t), m=anticipation_step_count.
-        anticipation = [None] * len(action_space)
-        for action_idx, action in enumerate(action_space):
-            anticipation[action_idx] = build_distribution(env.get_state()['Hash'], mapping, [action_idx], 0, action_space, current_player, current_player, env.player_count, anticipation_step_count)
-        
-        # Make a flat list of all the reachable states
-        reachable_states = []
-        for a in anticipation:
-            for s_hash in a:
-                reachable_states.append(s_hash)
-
-        # All possible action combinations of length 'step'
-        action_combinations = [list(combo) for combo in product(range(len(action_space)), repeat=action_seq_length)]
-        
-        # Save the expected empowerment for each anticipated state
-        state_empowerments = {}
-        
-        # Calculate the n-step empowerment for each state that was found earlier
-        for state in reachable_states:
-            # A list of end state probabilities, for each action combination. A list of dictionaries.
-            states_for_action_seqs = [None] * len(action_combinations)
-            for combo_idx, action_combo in enumerate(action_combinations):
-                states_for_action_seqs[combo_idx] = build_distribution(state, mapping, action_combo, 0, action_space, emp_pair[0], emp_pair[0], env.player_count, action_seq_length * env.player_count)
-            
-            # Covert the end states into observations of the active player (actuator of the empowerment pair)
-            states_as_obs = [{} for _ in states_for_action_seqs]
-            for sequence_id, cpd_states in enumerate(states_for_action_seqs):
-                for state_hash in cpd_states:
-                    latest_obs = hash_decode[state_hash]._player_last_observation[emp_pair[1]-1]
-                    hashed_obs = hash_obs(latest_obs)
-                    # Multiple states may lead to same observation, combine them if so
-                    if hashed_obs not in states_as_obs[sequence_id]:
-                        states_as_obs[sequence_id][hashed_obs] = 0
-                    states_as_obs[sequence_id][hashed_obs] += cpd_states[state_hash]
-            # Use the Blahut-Arimoto algorithm to calculate the optimal probability distribution
-            pd_a_opt = empowerment_maximization.blahut_arimoto(states_as_obs, np.random.default_rng())
-            # Use the optimal distribution to calculate the mutual information (empowerement)
-            empowerment = empowerment_maximization.mutual_information(pd_a_opt, states_as_obs)
-            state_empowerments[state] = empowerment
-
-        # Calculate the expected empowerment for each action that can be taken from the current state
-        expected_empowerments = np.zeros(len(action_space))
-        for a in range(0, len(action_space)):
-            for s, p_s in anticipation[a].items():
-                expected_empowerments[a] += p_s * state_empowerments[s]
+        expected_empowerments = calculate_expected_empowerments(env, mapping, action_seq_length, anticipation_step_counts[pair_i], action_space, current_player, emp_pair, hash_decode)
         expected_empowerments_per_pair.append(expected_empowerments)
 
     EPSILON = 1e-5
@@ -217,6 +223,4 @@ def cem_action(env, current_player, action_seq_length, empowerment_pairs, empowe
             best_rewards.append(policy_reward)
             best_actions.append(a)
         
-
     return action_space[random.choice(best_actions)]
-
