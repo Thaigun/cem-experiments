@@ -6,7 +6,7 @@ import random
 import empowerment_maximization
 from griddly_cem_agent import cem_action
 
-def make_random_move(env, prev_obs, obs, action, rew, env_done, info):
+def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
     if len(available_actions) == 0:
         return
@@ -21,7 +21,7 @@ def make_random_move(env, prev_obs, obs, action, rew, env_done, info):
     env.step([[0,0], random_action])
 
 
-def maximise_empowerment(env, prev_obs, obs, action, rew, env_done, info):
+def maximise_empowerment(env, env_done, info):
     if (env_done):
         return
     clone_env = env.clone()
@@ -30,8 +30,8 @@ def maximise_empowerment(env, prev_obs, obs, action, rew, env_done, info):
     env.step([[0,0], action])
 
     
-def maximise_cem(env, prev_obs, obs, action, rew, env_done, info):
-    action = cem_action(env, 2, 3, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1])
+def maximise_cem(env, env_done, info):
+    action = cem_action(env, 2, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1])
     env.step([[0,0], list(action)])
 
 if __name__ == '__main__':

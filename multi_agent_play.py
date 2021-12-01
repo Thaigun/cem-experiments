@@ -69,42 +69,50 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
     pressed_keys = []
     running = True
     env_done = True
+    info = {}
 
     screen = pygame.display.set_mode(video_size)
     clock = pygame.time.Clock()
+
+    npc_turn = False
 
     while running:
         if env_done:
             env_done = False
             obs = env.reset()
+            
+        if npc_turn:
+            if callback is not None:
+                callback(env, env_done, info)
+                npc_turn = False
+
         else:
+            # process pygame events
+            for event in pygame.event.get():
+                # test events, set key states
+                if event.type == pygame.KEYDOWN:
+                    if event.key in relevant_keys:
+                        pressed_keys.append(event.key)
+                    elif event.key == 27:
+                        running = False
+                elif event.type == pygame.KEYUP:
+                    if event.key in relevant_keys:
+                        pressed_keys.remove(event.key)
+                elif event.type == pygame.QUIT:
+                    running = False
+                elif event.type == VIDEORESIZE:
+                    video_size = event.size
+                    screen = pygame.display.set_mode(video_size)
+                    print(video_size)
+
             action = keys_to_action.get(tuple(sorted(pressed_keys)), [0, 0])
-            prev_obs = obs
             if action[1] != 0:
                 obs, rew, env_done, info = env.step([action, [0, 0]])
-                if callback is not None:
-                    callback(env, prev_obs, obs, action, rew, env_done, info)
+                npc_turn = True
+
         if obs is not None:
             rendered = env.render(observer="global", mode="rgb_array")
             display_arr(screen, rendered, transpose=transpose, video_size=video_size)
-
-        # process pygame events
-        for event in pygame.event.get():
-            # test events, set key states
-            if event.type == pygame.KEYDOWN:
-                if event.key in relevant_keys:
-                    pressed_keys.append(event.key)
-                elif event.key == 27:
-                    running = False
-            elif event.type == pygame.KEYUP:
-                if event.key in relevant_keys:
-                    pressed_keys.remove(event.key)
-            elif event.type == pygame.QUIT:
-                running = False
-            elif event.type == VIDEORESIZE:
-                video_size = event.size
-                screen = pygame.display.set_mode(video_size)
-                print(video_size)
 
         pygame.display.flip()
         clock.tick(fps)
