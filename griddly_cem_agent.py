@@ -106,7 +106,7 @@ class CEMEnv():
         # Initialize the breadth-first search
         init_state_hash = self.env.get_state()['Hash']
         self.hash_decode[init_state_hash] = self.env
-        state_q.put(init_state_hash)
+        state_q.put((init_state_hash, self.current_player))
 
         # Keep track of the depth of the search (how many steps from the initial state)
         nodes_left_current_depth = 1
@@ -126,8 +126,10 @@ class CEMEnv():
                     # If the environment is not deterministic, determine the probabilities by sampling
                     for _ in range(samples):
                         # Do the stepping in a cloned environment
-                        clone_env = self.hash_decode[current_state].clone()
-                        clone_env.step(self.build_action(action, (self.current_player + steps_done) % self.player_count + 1))
+                        clone_env = self.hash_decode[current_state[0]].clone()
+                        curr_agent_id = (self.current_player + steps_done - 1) % self.player_count + 1
+                        next_agent_id = (self.current_player + steps_done) % self.player_count + 1
+                        clone_env.step(self.build_action(action, curr_agent_id))
                         next_state_hash = clone_env.get_state()['Hash']
                         
                         # Increase the probability of reaching this follow-up state from the current state by 1/samples
@@ -139,8 +141,9 @@ class CEMEnv():
                             self.hash_decode[next_state_hash] = clone_env
 
                         # Add each possible follow-up state to the queue, if they have not been visited yet
-                        if next_state_hash not in mapping:
-                            state_q.put(next_state_hash)
+                        next_state_and_agent = (next_state_hash, next_agent_id)
+                        if next_state_and_agent not in mapping:
+                            state_q.put(next_state_and_agent)
                             nodes_in_next_level += 1
 
             # Detect if all states have been reached in this depth (steps from the original state). If so, move to the next depth
@@ -186,7 +189,7 @@ class CEMEnv():
         assumed_policy = 1 / len(curr_agent_actions)
         for action in curr_agent_actions:
             # From the pre-built mapping, get the probability distribution for the next step, given an action
-            next_step_probs = self.mapping[env_hash][action]
+            next_step_probs = self.mapping[(env_hash, current_step_agent)][action]
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_probs.items():
                 next_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, current_step_agent % self.player_count + 1, steps-1)
