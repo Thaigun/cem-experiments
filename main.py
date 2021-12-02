@@ -4,7 +4,7 @@ from griddly import GymWrapperFactory, gd
 import numpy as np
 import random
 import empowerment_maximization
-from griddly_cem_agent import cem_action
+from griddly_cem_agent import CEMEnv
 
 def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -31,7 +31,10 @@ def maximise_empowerment(env, env_done, info):
 
     
 def maximise_cem(env, env_done, info):
-    action = cem_action(env, 2, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1])
+    if env_done:
+        return
+    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1], 2, 1)
+    action = cem.cem_action()
     env.step([[0,0], list(action)])
 
 if __name__ == '__main__':
