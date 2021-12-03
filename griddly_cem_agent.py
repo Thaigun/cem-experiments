@@ -133,10 +133,10 @@ class CEMEnv():
                         next_state_hash = clone_env.get_state()['Hash']
                         
                         # Increase the probability of reaching this follow-up state from the current state by 1/samples
-                        if next_state_hash not in mapping[current_state][action_idx]:
-                            mapping[current_state][action_idx][next_state_hash] = 1.0 / samples
+                        if (next_state_hash, next_agent_id) not in mapping[current_state][action_idx]:
+                            mapping[current_state][action_idx][(next_state_hash, next_agent_id)] = 1.0 / samples
                         else:
-                            mapping[current_state][action_idx][next_state_hash] += 1.0 / samples
+                            mapping[current_state][action_idx][(next_state_hash, next_agent_id)] += 1.0 / samples
                         if next_state_hash not in self.hash_decode:
                             self.hash_decode[next_state_hash] = clone_env
 
@@ -192,7 +192,7 @@ class CEMEnv():
             next_step_probs = self.mapping[(env_hash, current_step_agent)][action]
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_probs.items():
-                next_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, current_step_agent % self.player_count + 1, steps-1)
+                next_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], steps-1)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for key in next_distribution:
                     if key not in state_distribution_nstep:
