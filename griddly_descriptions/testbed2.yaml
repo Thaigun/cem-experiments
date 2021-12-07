@@ -1,0 +1,61 @@
+Version: "0.1"
+
+# Define the environment
+Environment:
+  Name: emp1
+  Observers:
+    Sprite2D:
+      TileSize: 24
+      BackgroundTile: oryx/oryx_fantasy/floor9-3.png
+    Vector:
+      IncludePlayerId: true
+      IncludeRotation: true
+      IncludeVariables: true
+  Player:
+    AvatarObject: plr
+    Count: 2
+    Observer:
+      RotateWithAvatar: true
+      TrackAvatar: true
+      Height: 5
+      Width: 5
+  Termination:
+    Lose:
+      - lte: [plr:count, 0]
+  Levels:
+    - |
+      w w w w w w w w w 
+      w . . . P2 . . . w
+      w . . . . . . . w
+      w . . . . . . . w
+      w . . . . . . . w
+      w . w w w w w . w
+      w . . . . . . . w
+      w . . . P1 . . . w
+      w w w w w w w w w
+
+# Available action options 
+Actions:
+  - Name: move
+    Behaviours:
+      - Src:
+          Object: plr
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+
+# Objects of the world
+Objects:
+  - Name: wall
+    MapCharacter: w
+    Observers:
+      Sprite2D:
+        - Image: oryx/oryx_fantasy/wall9-3.png
+  - Name: plr
+    MapCharacter: P
+    Observers:
+      Sprite2D:
+        - Image: oryx/oryx_fantasy/avatars/genie1.png
+        - Image: oryx/oryx_fantasy/avatars/priest1.png
