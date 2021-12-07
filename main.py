@@ -32,10 +32,13 @@ def maximise_empowerment(env, env_done, info):
     
 def maximise_cem(env, env_done, info):
     if env_done:
+        env.reset()
         return
-    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1], 2, 1)
+    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1], [[1],[2]], 2, 1)
     action = cem.cem_action()
-    env.step([[0,0], list(action)])
+    obs, rew, env_done, info = env.step([[0,0], list(action)])
+    if env_done:
+        env.reset()
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()

@@ -11,13 +11,14 @@ def hash_obs(obs):
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, n_step, samples=1):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, samples=1):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
         self.n_step = n_step
         self.current_player = current_player
         self.env = env
+        self.teams = teams
 
         # List all possible actions in the game
         self.action_space = [(0, 0)] # Include the idling action
@@ -44,7 +45,7 @@ class CEMEnv():
 
 
     def calc_anticipation_step_count(self, curr_plr, actuator):
-        return (actuator - curr_plr) if actuator > curr_plr else self.env.player_count - (curr_plr - actuator)
+        return (actuator - curr_plr) if actuator > curr_plr else self.player_count - (curr_plr - actuator)
 
 
     def cem_action(self):
@@ -129,22 +130,31 @@ class CEMEnv():
                         clone_env = self.hash_decode[current_state[0]].clone()
                         curr_agent_id = (self.current_player + steps_done - 1) % self.player_count + 1
                         next_agent_id = (self.current_player + steps_done) % self.player_count + 1
-                        clone_env.step(self.build_action(action, curr_agent_id))
-                        next_state_hash = clone_env.get_state()['Hash']
-                        
-                        # Increase the probability of reaching this follow-up state from the current state by 1/samples
-                        if (next_state_hash, next_agent_id) not in mapping[current_state][action_idx]:
-                            mapping[current_state][action_idx][(next_state_hash, next_agent_id)] = 1.0 / samples
+                        obs, rew, env_done, info = clone_env.step(self.build_action(action, curr_agent_id))
+                        if env_done:
+                            for plr, status in info['PlayerResults'].items():
+                                if status == 'Win':
+                                    next_state_hash = int(plr)
+                                    break
                         else:
-                            mapping[current_state][action_idx][(next_state_hash, next_agent_id)] += 1.0 / samples
-                        if next_state_hash not in self.hash_decode:
+                            next_state_hash = clone_env.get_state()['Hash']
+                        
+                        next_state_and_agent = (next_state_hash, next_agent_id)
+                        # Increase the probability of reaching this follow-up state from the current state by 1/samples
+                        if next_state_and_agent not in mapping[current_state][action_idx]:
+                            mapping[current_state][action_idx][next_state_and_agent] = 1.0 / samples
+                        else:
+                            mapping[current_state][action_idx][next_state_and_agent] += 1.0 / samples
+                        if next_state_hash not in self.hash_decode and not env_done:
                             self.hash_decode[next_state_hash] = clone_env
 
                         # Add each possible follow-up state to the queue, if they have not been visited yet
-                        next_state_and_agent = (next_state_hash, next_agent_id)
                         if next_state_and_agent not in mapping:
-                            state_q.put(next_state_and_agent)
-                            nodes_in_next_level += 1
+                            if env_done:
+                                mapping[next_state_and_agent] = [{next_state_and_agent: 1.0} for _ in self.action_space]
+                            else:
+                                state_q.put(next_state_and_agent)
+                                nodes_in_next_level += 1
 
             # Detect if all states have been reached in this depth (steps from the original state). If so, move to the next depth
             if nodes_left_current_depth == 0:
@@ -177,6 +187,15 @@ class CEMEnv():
         # If this is the last step, just return this state and probability 1.0
         if steps == 0:
             return {env_hash: 1.0}
+
+        # If this is one of the terminated states, return a mapping where each following active agent action leads to a different outcome
+        if env_hash <= self.player_count and env_hash >= 0:
+            active_agent_team = next(team for team in self.teams if active_agent in team)
+            if env_hash in active_agent_team:
+                # Random state hash with probability 1.0, represents a unique state
+                return {self.rng.integers(self.player_count + 1): 1.0}
+            else:
+                return {0: 1.0}
         
         # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
         curr_agent_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_space))
@@ -201,18 +220,23 @@ class CEMEnv():
         return state_distribution_nstep
 
 
-    def calculate_state_empowerment(self, state, action_combinations, actuator, perceptor):
+    def calculate_state_empowerment(self, state_hash, actuator, perceptor):
+        # All possible action combinations of length 'step'
+        action_combinations = [list(combo) for combo in product(range(len(self.action_space)), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         states_for_action_seqs = [None] * len(action_combinations)
         for combo_idx, action_combo in enumerate(action_combinations):
-            states_for_action_seqs[combo_idx] = self.build_distribution(state, action_combo, 0, actuator, actuator, self.n_step * self.player_count)
+            states_for_action_seqs[combo_idx] = self.build_distribution(state_hash, action_combo, 0, actuator, actuator, self.n_step * self.player_count)
         
         # Covert the end states into observations of the active player (actuator of the empowerment pair)
         states_as_obs = [{} for _ in states_for_action_seqs]
         for sequence_id, cpd_states in enumerate(states_for_action_seqs):
             for state_hash in cpd_states:
-                latest_obs = self.hash_decode[state_hash]._player_last_observation[perceptor-1]
-                hashed_obs = hash_obs(latest_obs)
+                if state_hash <= self.player_count and state_hash >= 0:
+                    hashed_obs = state_hash
+                else:
+                    latest_obs = self.hash_decode[state_hash]._player_last_observation[perceptor-1]
+                    hashed_obs = hash_obs(latest_obs)
                 # Multiple states may lead to same observation, combine them if so
                 if hashed_obs not in states_as_obs[sequence_id]:
                     states_as_obs[sequence_id][hashed_obs] = 0
@@ -237,13 +261,11 @@ class CEMEnv():
         for a in anticipation:
             for s_hash in a:
                 reachable_states.add(s_hash)
-        # All possible action combinations of length 'step'
-        action_combinations = [list(combo) for combo in product(range(len(self.action_space)), repeat=self.n_step)]
         # Save the expected empowerment for each anticipated state
         state_empowerments = {}
         # Calculate the n-step empowerment for each state that was found earlier
         for state in reachable_states:
-            empowerment = self.calculate_state_empowerment(state, action_combinations, emp_pair[0], emp_pair[1])
+            empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1])
             state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
         expected_empowerments = np.zeros(len(self.action_space))

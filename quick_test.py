@@ -21,9 +21,11 @@ if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
 
-    cem_env = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [1, 1, 1], 2, 1)
-    selected_action = cem_env.cem_action()
-    print(selected_action)
+    cem_env = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [1, 1, 1], [[1], [2]], 2, 1)
+    emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], 2, 2)
+    print(emp)
+    #selected_action = cem_env.cem_action()
+    #print(selected_action)
 
     pr.disable()
     pr.create_stats()
