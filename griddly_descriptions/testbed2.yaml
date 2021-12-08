@@ -9,7 +9,7 @@ Environment:
       BackgroundTile: oryx/oryx_fantasy/floor9-3.png
     Vector:
       IncludePlayerId: true
-      IncludeRotation: true
+      IncludeRotation: false
       IncludeVariables: true
   Player:
     AvatarObject: plr
