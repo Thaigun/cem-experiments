@@ -6,12 +6,17 @@ import random
 
 
 # Hashes the numpy array of observations
-def hash_obs(obs):
-    return hash(obs.tobytes())
+def hash_obs(obs, player_pos):
+    byte_repr = obs.tobytes() + bytes(player_pos)
+    return hash(byte_repr)
+
+
+def find_player_pos(env_state, player_id):
+    return next(o['Location'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, samples=1):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, seed=None, samples=1):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
@@ -27,7 +32,7 @@ class CEMEnv():
                 self.action_space.append((action_type_index, action_id))
         # Will contain the mapping from state hashes to states
         self.hash_decode = {}
-        self.rng = np.random.default_rng()
+        self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
         self.player_count = env.player_count
         # Sn array of how many anticipation steps there are for each empowerment pair, i.e. how many steps before calculating the actual empowerment
         anticipation_step_counts = [self.calc_anticipation_step_count(current_player, empowerment_pair[0]) for empowerment_pair in empowerment_pairs]
@@ -235,8 +240,10 @@ class CEMEnv():
                 if state_hash <= self.player_count and state_hash >= 0:
                     hashed_obs = state_hash
                 else:
-                    latest_obs = self.hash_decode[state_hash]._player_last_observation[perceptor-1]
-                    hashed_obs = hash_obs(latest_obs)
+                    end_env = self.hash_decode[state_hash]
+                    latest_obs = end_env._player_last_observation[perceptor-1]
+                    player_pos = find_player_pos(end_env.get_state(), perceptor)
+                    hashed_obs = hash_obs(latest_obs, player_pos)
                 # Multiple states may lead to same observation, combine them if so
                 if hashed_obs not in states_as_obs[sequence_id]:
                     states_as_obs[sequence_id][hashed_obs] = 0

@@ -1,8 +1,9 @@
 import os
 import cProfile
 from griddly import GymWrapperFactory, gd, GymWrapper
-from griddly_cem_agent import CEMEnv
+from griddly_cem_agent import CEMEnv, find_player_pos
 import numpy as np
+import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     player_id = 1
     emp_pairs = [(1,1), (1,2)]
     
-    for nstep in range(1, 4):
+    for nstep in range(1, 3):
         print('nstep: ', nstep)
         env.reset()
         #pr = cProfile.Profile()
@@ -28,12 +29,12 @@ if __name__ == '__main__':
 
         for _ in range(1000):
             env.render(observer='global')
-            plr_2_pos = next(o['Location'] for o in env.get_state()['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
-            if tuple(plr_2_pos) not in calculated_emps[0]:
-                cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], [[1], [2]], nstep, 1)
+            plr_pos = find_player_pos(env.get_state(), player_id)
+            if tuple(plr_pos) not in calculated_emps[0]:
+                cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], [[1], [2]], nstep, seed=1, samples=1)
                 for emp_pair_i, emp_pair in enumerate(emp_pairs):
                     state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
-                    calculated_emps[emp_pair_i][tuple(plr_2_pos)] = state_emp
+                    calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
             #Sample an action, but only for one player
             action_sample = env.action_space.sample()
             action = [0] * env.player_count
@@ -58,7 +59,16 @@ if __name__ == '__main__':
                 for col in row:
                     print("%.2f" % col, end=' ')
                 print()
+            
+            ext_visu = 0, 216, 0, 216
+            ext_map = 24, 216-24, 24, 216-24
+            visu = env.render(observer='global', mode='rgb_array')
+            plt.imshow(visu, extent=ext_visu)
+            hmap = plt.imshow(emp_array, cmap='plasma', interpolation='nearest', alpha=0.5, extent=ext_map)
+            plt.colorbar(hmap)
+            plt.show()
 
+    #input('Press enter to exit')
     #pr.disable()
     #pr.create_stats()
     #pr.print_stats(sort='cumtime')
