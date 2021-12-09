@@ -172,7 +172,7 @@ class CEMEnv():
         return mapping
 
 
-    def build_distribution(self, env_hash, action_seq, action_stepper, active_agent, current_step_agent, steps):
+    def build_distribution(self, env_hash, action_seq, action_stepper, active_agent, current_step_agent, perceptor):
         '''
         Builds the distribution p(S_t+n|s_t, a_t^n)
         s_t is given by env_hash
@@ -184,13 +184,13 @@ class CEMEnv():
             action_stepper                      -> which action is next in turn in the action sequence
             active_agent                        -> player that we are interested in (for whom the action sequence applies to)
             current_step_player                 -> the player whose turn it is next, if this is the active player, then we use the action sequence. Otherwise, we build the distribution for all possible actions
-            steps                               -> How many steps forward the probability distribution should be built
+            perceptor                           -> the agent until whose perception the distribution is built, after all actions have been taken
 
         Returns:
             A dictionary, where the keys are the states and the values are the probabilities: {state_hash: probability}
         '''
         # If this is the last step, just return this state and probability 1.0
-        if steps == 0:
+        if action_stepper == len(action_seq) and current_step_agent == perceptor:
             return {env_hash: 1.0}
 
         # If this is one of the terminated states, return a mapping where each following active agent action leads to a different outcome
@@ -216,7 +216,7 @@ class CEMEnv():
             next_step_probs = self.mapping[(env_hash, current_step_agent)][action]
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_probs.items():
-                next_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], steps-1)
+                next_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], perceptor)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for key in next_distribution:
                     if key not in state_distribution_nstep:
@@ -231,7 +231,7 @@ class CEMEnv():
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         states_for_action_seqs = [None] * len(action_combinations)
         for combo_idx, action_combo in enumerate(action_combinations):
-            states_for_action_seqs[combo_idx] = self.build_distribution(state_hash, action_combo, 0, actuator, actuator, self.n_step * self.player_count)
+            states_for_action_seqs[combo_idx] = self.build_distribution(state_hash, action_combo, 0, actuator, actuator, perceptor)
         
         # Covert the end states into observations of the active player (actuator of the empowerment pair)
         states_as_obs = [{} for _ in states_for_action_seqs]
@@ -262,7 +262,7 @@ class CEMEnv():
         # Find the probability of each follow-up state after anticipation_step_count steps, for each action from the current state. p(S_{t+m}|s_t, a_t), m=anticipation_step_count.
         anticipation = [None] * len(self.action_space)
         for action_idx, action in enumerate(self.action_space):
-            anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, anticipation_step_count)
+            anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, self.current_player)
         # Make a flat list of all the reachable states
         reachable_states = set()
         for a in anticipation:
