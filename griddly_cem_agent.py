@@ -259,10 +259,10 @@ class CEMEnv():
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
-        # Find the probability of each follow-up state after anticipation_step_count steps, for each action from the current state. p(S_{t+m}|s_t, a_t), m=anticipation_step_count.
+        # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
         anticipation = [None] * len(self.action_space)
         for action_idx, action in enumerate(self.action_space):
-            anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, self.current_player)
+            anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, emp_pair[0])
         # Make a flat list of all the reachable states
         reachable_states = set()
         for a in anticipation:
