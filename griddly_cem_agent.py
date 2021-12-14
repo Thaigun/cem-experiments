@@ -75,8 +75,7 @@ class CEMEnv():
         expected_empowerments_per_pair = []
 
         for emp_pair in self.empowerment_pairs:
-            anticipation_step_count = self.calc_anticipation_step_count(self.current_player, emp_pair[0])
-            expected_empowerments = self.calculate_expected_empowerments(anticipation_step_count, emp_pair)
+            expected_empowerments = self.calculate_expected_empowerments(emp_pair)
             expected_empowerments_per_pair.append(expected_empowerments)
 
         EPSILON = 1e-5
@@ -255,7 +254,7 @@ class CEMEnv():
         return empowerment
 
 
-    def calculate_expected_empowerments(self, anticipation_step_count, emp_pair):
+    def calculate_expected_empowerments(self, emp_pair):
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
