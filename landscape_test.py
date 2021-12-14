@@ -4,6 +4,7 @@ from griddly import GymWrapperFactory, gd, GymWrapper
 from griddly_cem_agent import CEMEnv, find_player_pos
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()
@@ -17,8 +18,8 @@ if __name__ == '__main__':
                      global_observer_type=gd.ObserverType.SPRITE_2D,
                      level=0)
 
-    player_id = 1
-    emp_pairs = [(1,1), (1,2)]
+    player_id = 2
+    emp_pairs = [(2,2), (2,1)]
     
     for nstep in range(1, 3):
         print('nstep: ', nstep)
@@ -27,7 +28,7 @@ if __name__ == '__main__':
         #pr.enable()
         calculated_emps = [{} for _ in emp_pairs]
 
-        for _ in range(1000):
+        for _ in range(2000):
             env.render(observer='global')
             plr_pos = find_player_pos(env.get_state(), player_id)
             if tuple(plr_pos) not in calculated_emps[0]:
@@ -36,9 +37,9 @@ if __name__ == '__main__':
                     state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
                     calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
             #Sample an action, but only for one player
-            action_sample = env.action_space.sample()
-            action = [0] * env.player_count
-            action[player_id-1] = action_sample[player_id-1]
+            action_sample = random.choice(range(1, 5))
+            action = [0 for _ in range(env.player_count)]
+            action[player_id-1] = action_sample
             obs, rew, done, info = env.step(action)
             
         for emp_pair_i, emp_pair in enumerate(emp_pairs):
