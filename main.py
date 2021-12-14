@@ -31,11 +31,16 @@ def maximise_empowerment(env, env_done, info):
     env.step([[0,0], action])
 
     
-def maximise_cem(env, env_done, info):
+def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
         return
-    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.2, 0.1], [[1],[2]], 2, samples=1)
+    # Companion
+    if player_in_turn == 2:
+        cem = CEMEnv(env, player_in_turn, [(1,1), (2,2), (2,1)], [1, 0.2, 0.2], [[1,2],[3]], 2, samples=1)
+    # Enemy
+    elif player_in_turn == 3:
+        cem = CEMEnv(env, player_in_turn, [(1,1), (3,3), (3,1)], [-1, 0.2, 0.1], [[1,2],[3]], 2, samples=1)
     action = cem.cem_action()
     obs, rew, env_done, info = env.step([[0,0], list(action)])
     if env_done:

@@ -5,7 +5,7 @@ from griddly_cem_agent import CEMEnv
 
 if __name__ == '__main__':
     current_path = os.path.dirname(os.path.realpath(__file__))
-    env = GymWrapper(current_path + '/griddly_descriptions/testbed1.yaml',
+    env = GymWrapper(current_path + '/griddly_descriptions/testbed3.yaml',
                      player_observer_type=gd.ObserverType.VECTOR,
                      global_observer_type=gd.ObserverType.SPRITE_2D,
                      level=0)

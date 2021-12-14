@@ -74,17 +74,17 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
     screen = pygame.display.set_mode(video_size)
     clock = pygame.time.Clock()
 
-    npc_turn = False
+    player_in_turn = 1
 
     while running:
         if env_done:
             env_done = False
             obs = env.reset()
             
-        if npc_turn:
+        if player_in_turn > 1:
             if callback is not None:
-                callback(env, env_done, info)
-                npc_turn = False
+                callback(env, env_done, player_in_turn, info)
+                player_in_turn = player_in_turn % env.player_count + 1
 
         else:
             # process pygame events
@@ -107,8 +107,10 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
 
             action = keys_to_action.get(tuple(sorted(pressed_keys)), [0, 0])
             if action[1] != 0:
-                obs, rew, env_done, info = env.step([action, [0, 0]])
-                npc_turn = True
+                full_action = [[0,0] for _ in range(env.player_count)]
+                full_action[player_in_turn - 1] = action
+                obs, rew, env_done, info = env.step(full_action)
+                player_in_turn = player_in_turn % env.player_count + 1        
 
         if obs is not None:
             rendered = env.render(observer="global", mode="rgb_array")

@@ -13,7 +13,7 @@ Environment:
       IncludeVariables: true
   Player:
     AvatarObject: plr
-    Count: 3
+    Count: 2
     Observer:
       RotateWithAvatar: true
       TrackAvatar: true
@@ -25,13 +25,13 @@ Environment:
   Levels:
     - |
       w w w w w w w w w 
-      w . . . P3 . . . w
+      w . . . P2 . . . w
       w . . . . . . . w
       w . . . . . . . w
       w . . . . . . . w
       w . w w w w w . w
       w . . . . . . . w
-      w . P2 . P1 . . . w
+      w . . . P1 . . . w
       w w w w w w w w w
 
 # Available action options 
