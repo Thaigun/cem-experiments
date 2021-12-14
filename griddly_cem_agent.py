@@ -120,20 +120,22 @@ class CEMEnv():
 
         # Do the breadth-first search
         while not state_q.empty():
-            current_state = state_q.get()
+            current_hash_and_player = state_q.get()
             nodes_left_current_depth -= 1
 
             # Being in the mapping means that the state has been visited
-            if current_state not in mapping:
-                mapping[current_state] = [{} for _ in self.action_space]
+            if current_hash_and_player not in mapping:
+                mapping[current_hash_and_player] = [{} for _ in self.action_space]
+                
+                current_env = self.hash_decode[current_hash_and_player[0]]
+                curr_agent_id = (self.current_player + steps_done - 1) % self.player_count + 1
+                next_agent_id = (self.current_player + steps_done) % self.player_count + 1
                 # Add to mapping the possible follow-up states with their probabilities, per action
                 for action_idx, action in enumerate(self.action_space):
                     # If the environment is not deterministic, determine the probabilities by sampling
                     for _ in range(samples):
                         # Do the stepping in a cloned environment
-                        clone_env = self.hash_decode[current_state[0]].clone()
-                        curr_agent_id = (self.current_player + steps_done - 1) % self.player_count + 1
-                        next_agent_id = (self.current_player + steps_done) % self.player_count + 1
+                        clone_env = current_env.clone()
                         obs, rew, env_done, info = clone_env.step(self.build_action(action, curr_agent_id))
                         if env_done:
                             for plr, status in info['PlayerResults'].items():
@@ -145,10 +147,10 @@ class CEMEnv():
                         
                         next_state_and_agent = (next_state_hash, next_agent_id)
                         # Increase the probability of reaching this follow-up state from the current state by 1/samples
-                        if next_state_and_agent not in mapping[current_state][action_idx]:
-                            mapping[current_state][action_idx][next_state_and_agent] = 1.0 / samples
+                        if next_state_and_agent not in mapping[current_hash_and_player][action_idx]:
+                            mapping[current_hash_and_player][action_idx][next_state_and_agent] = 1.0 / samples
                         else:
-                            mapping[current_state][action_idx][next_state_and_agent] += 1.0 / samples
+                            mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / samples
                         if next_state_hash not in self.hash_decode and not env_done:
                             self.hash_decode[next_state_hash] = clone_env
 
@@ -202,40 +204,40 @@ class CEMEnv():
                 return {0: 1.0}
         
         # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
-        curr_agent_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_space))
+        curr_available_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_space))
         # Also, increase the action stepper if this agent was the active one.
         next_action_step = action_stepper + 1 if active_agent == current_step_agent else action_stepper
 
-        state_distribution_nstep = {}
+        pd_s_nstep = {}
         
         # If we step forward with multiple actions, we assume uniform distribution of those actions.
-        assumed_policy = 1 / len(curr_agent_actions)
-        for action in curr_agent_actions:
+        assumed_policy = 1 / len(curr_available_actions)
+        for action in curr_available_actions:
             # From the pre-built mapping, get the probability distribution for the next step, given an action
-            next_step_probs = self.mapping[(env_hash, current_step_agent)][action]
+            next_step_pd_s = self.mapping[(env_hash, current_step_agent)][action]
             # Recursively, build the distribution for each possbile follow-up state
-            for next_state, next_state_prob in next_step_probs.items():
-                next_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], perceptor)
+            for next_state, next_state_prob in next_step_pd_s.items():
+                child_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], perceptor)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
-                for key in next_distribution:
-                    if key not in state_distribution_nstep:
-                        state_distribution_nstep[key] = 0
-                    state_distribution_nstep[key] += next_distribution[key] * assumed_policy * next_state_prob
-        return state_distribution_nstep
+                for hash in child_distribution:
+                    if hash not in pd_s_nstep:
+                        pd_s_nstep[hash] = 0
+                    pd_s_nstep[hash] += child_distribution[hash] * assumed_policy * next_state_prob
+        return pd_s_nstep
 
 
     def calculate_state_empowerment(self, state_hash, actuator, perceptor):
         # All possible action combinations of length 'step'
-        action_combinations = [list(combo) for combo in product(range(len(self.action_space)), repeat=self.n_step)]
+        action_sequences = [list(combo) for combo in product(range(len(self.action_space)), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
-        states_for_action_seqs = [None] * len(action_combinations)
-        for combo_idx, action_combo in enumerate(action_combinations):
-            states_for_action_seqs[combo_idx] = self.build_distribution(state_hash, action_combo, 0, actuator, actuator, perceptor)
+        cpd_S_A_nstep = [None] * len(action_sequences)
+        for seq_idx, action_seq in enumerate(action_sequences):
+            cpd_S_A_nstep[seq_idx] = self.build_distribution(state_hash, action_seq, 0, actuator, actuator, perceptor)
         
         # Covert the end states into observations of the active player (actuator of the empowerment pair)
-        states_as_obs = [{} for _ in states_for_action_seqs]
-        for sequence_id, cpd_states in enumerate(states_for_action_seqs):
-            for state_hash in cpd_states:
+        states_as_obs = [{} for _ in cpd_S_A_nstep]
+        for sequence_id, pd_states in enumerate(cpd_S_A_nstep):
+            for state_hash in pd_states:
                 if state_hash <= self.player_count and state_hash >= 0:
                     hashed_obs = state_hash
                 else:
@@ -246,7 +248,7 @@ class CEMEnv():
                 # Multiple states may lead to same observation, combine them if so
                 if hashed_obs not in states_as_obs[sequence_id]:
                     states_as_obs[sequence_id][hashed_obs] = 0
-                states_as_obs[sequence_id][hashed_obs] += cpd_states[state_hash]
+                states_as_obs[sequence_id][hashed_obs] += pd_states[state_hash]
         # Use the Blahut-Arimoto algorithm to calculate the optimal probability distribution
         pd_a_opt = empowerment_maximization.blahut_arimoto(states_as_obs, self.rng)
         # Use the optimal distribution to calculate the mutual information (empowerement)
@@ -259,23 +261,23 @@ class CEMEnv():
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
         # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
-        anticipation = [None] * len(self.action_space)
+        cpd_s_a_anticipation = [None] * len(self.action_space)
         for action_idx, action in enumerate(self.action_space):
-            anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, emp_pair[0])
+            cpd_s_a_anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, emp_pair[0])
         # Make a flat list of all the reachable states
         reachable_states = set()
-        for a in anticipation:
-            for s_hash in a:
+        for cpd_s in cpd_s_a_anticipation:
+            for s_hash in cpd_s:
                 reachable_states.add(s_hash)
         # Save the expected empowerment for each anticipated state
-        state_empowerments = {}
+        reachable_state_empowerments = {}
         # Calculate the n-step empowerment for each state that was found earlier
         for state in reachable_states:
             empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1])
-            state_empowerments[state] = empowerment
+            reachable_state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
         expected_empowerments = np.zeros(len(self.action_space))
         for a in range(0, len(self.action_space)):
-            for s, p_s in anticipation[a].items():
-                expected_empowerments[a] += p_s * state_empowerments[s]
+            for state, state_probability in cpd_s_a_anticipation[a].items():
+                expected_empowerments[a] += state_probability * reachable_state_empowerments[state]
         return expected_empowerments
