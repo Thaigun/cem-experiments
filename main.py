@@ -1,6 +1,7 @@
 import gym
+import os
 from multi_agent_play import play
-from griddly import GymWrapperFactory, gd
+from griddly import GymWrapper, gd
 import numpy as np
 import random
 import empowerment_maximization
@@ -34,17 +35,20 @@ def maximise_cem(env, env_done, info):
     if env_done:
         env.reset()
         return
-    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.0, 0.1], [[1],[2]], 2, samples=1)
+    cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [-1, 0.2, 0.1], [[1],[2]], 2, samples=1)
     action = cem.cem_action()
     obs, rew, env_done, info = env.step([[0,0], list(action)])
     if env_done:
         env.reset()
 
 if __name__ == '__main__':
-    wrapper = GymWrapperFactory()
-    wrapper.build_gym_from_yaml('TestBed', 'griddly_descriptions/testbed1.yaml')
-    # Match with the name of the env created with GymWrapper
-    env = gym.make('GDY-TestBed-v0', player_observer_type=gd.ObserverType.VECTOR, global_observer_type=gd.ObserverType.SPRITE_2D)
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    env_desc = 'griddly_descriptions/testbed1.yaml'
+    env = GymWrapper(os.path.join(current_path, env_desc),
+                     player_observer_type=gd.ObserverType.VECTOR,
+                     global_observer_type=gd.ObserverType.SPRITE_2D,
+                     level=0)
+
     action_names = env.gdy.get_action_names()
     key_mapping = {
         # Move actions are action_type 0, the first four are the action_ids for move (directions)
