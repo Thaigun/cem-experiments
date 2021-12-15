@@ -16,7 +16,7 @@ def find_player_pos(env_state, player_id):
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, seed=None, samples=1):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, seed=None, samples=1):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
@@ -26,10 +26,15 @@ class CEMEnv():
         self.teams = teams
 
         # List all possible actions in the game
-        self.action_space = [(0, 0)] # Include the idling action
-        for action_type_index, action_name in enumerate(env.action_names):
-            for action_id in range(1, env.num_action_ids[action_name]):
-                self.action_space.append((action_type_index, action_id))
+        self.action_spaces = [[] for _ in range(env.player_count)] 
+        # Include the idling action
+        for player_i in range(env.player_count):
+            if agent_actions is None or 'idle' in agent_actions[player_i]:
+                self.action_spaces[player_i].append((0,0))
+            for action_type_index, action_name in enumerate(env.action_names):
+                if agent_actions is None or action_name in agent_actions[player_i]:
+                    for action_id in range(1, env.num_action_ids[action_name]):
+                        self.action_spaces[player_i].append((action_type_index, action_id))
         # Will contain the mapping from state hashes to states
         self.hash_decode = {}
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
@@ -81,8 +86,8 @@ class CEMEnv():
         EPSILON = 1e-5
         best_actions = []
         best_rewards = []
-        # Find the action index that yields th highest expected empowerment
-        for a in range(len(self.action_space)):
+        # Find the action index that yields the highest expected empowerment
+        for a in range(len(self.action_spaces[self.current_player-1])):
             policy_reward = 0
             for e in range(len(self.empowerment_pairs)):
                 policy_reward += self.empowerment_weights[e] * expected_empowerments_per_pair[e][a]
@@ -93,7 +98,7 @@ class CEMEnv():
                 best_rewards.append(policy_reward)
                 best_actions.append(a)
         
-        return self.action_space[random.choice(best_actions)]
+        return self.action_spaces[self.current_player-1][random.choice(best_actions)]
 
 
     # Builds the action that can be passed to the Griddly environment
@@ -125,13 +130,12 @@ class CEMEnv():
 
             # Being in the mapping means that the state has been visited
             if current_hash_and_player not in mapping:
-                mapping[current_hash_and_player] = [{} for _ in self.action_space]
-                
                 current_env = self.hash_decode[current_hash_and_player[0]]
-                curr_agent_id = (self.current_player + steps_done - 1) % self.player_count + 1
+                curr_agent_id = current_hash_and_player[1]
                 next_agent_id = (self.current_player + steps_done) % self.player_count + 1
+                mapping[current_hash_and_player] = [{} for _ in self.action_spaces[curr_agent_id-1]]
                 # Add to mapping the possible follow-up states with their probabilities, per action
-                for action_idx, action in enumerate(self.action_space):
+                for action_idx, action in enumerate(self.action_spaces[curr_agent_id-1]):
                     # If the environment is not deterministic, determine the probabilities by sampling
                     for _ in range(samples):
                         # Do the stepping in a cloned environment
@@ -157,7 +161,7 @@ class CEMEnv():
                         # Add each possible follow-up state to the queue, if they have not been visited yet
                         if next_state_and_agent not in mapping:
                             if env_done:
-                                mapping[next_state_and_agent] = [{next_state_and_agent: 1.0} for _ in self.action_space]
+                                mapping[next_state_and_agent] = [{next_state_and_agent: 1.0} for _ in self.action_spaces[next_agent_id-1]]
                             else:
                                 state_q.put(next_state_and_agent)
                                 nodes_in_next_level += 1
@@ -204,7 +208,7 @@ class CEMEnv():
                 return {0: 1.0}
         
         # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
-        curr_available_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_space))
+        curr_available_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_spaces[current_step_agent-1]))
         # Also, increase the action stepper if this agent was the active one.
         next_action_step = action_stepper + 1 if active_agent == current_step_agent else action_stepper
 
@@ -228,7 +232,7 @@ class CEMEnv():
 
     def calculate_state_empowerment(self, state_hash, actuator, perceptor):
         # All possible action combinations of length 'step'
-        action_sequences = [list(combo) for combo in product(range(len(self.action_space)), repeat=self.n_step)]
+        action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
@@ -261,8 +265,8 @@ class CEMEnv():
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
         # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
-        cpd_s_a_anticipation = [None] * len(self.action_space)
-        for action_idx, action in enumerate(self.action_space):
+        cpd_s_a_anticipation = [None] * len(self.action_spaces[self.current_player-1])
+        for action_idx, action in enumerate(self.action_spaces[self.current_player-1]):
             cpd_s_a_anticipation[action_idx] = self.build_distribution(self.env.get_state()['Hash'], [action_idx], 0, self.current_player, self.current_player, emp_pair[0])
         # Make a flat list of all the reachable states
         reachable_states = set()
@@ -276,8 +280,8 @@ class CEMEnv():
             empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1])
             reachable_state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
-        expected_empowerments = np.zeros(len(self.action_space))
-        for a in range(0, len(self.action_space)):
+        expected_empowerments = np.zeros(len(self.action_spaces[self.current_player-1]))
+        for a in range(0, len(self.action_spaces[self.current_player-1])):
             for state, state_probability in cpd_s_a_anticipation[a].items():
                 expected_empowerments[a] += state_probability * reachable_state_empowerments[state]
         return expected_empowerments

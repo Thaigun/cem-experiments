@@ -13,7 +13,8 @@ if __name__ == '__main__':
 
     # Profile a step with CEM agent
     with cProfile.Profile() as pr:
-        cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [1, 1, 1], [[1],[2]], 2, samples=1)
+        action_sets = [['idle', 'move', 'heal', 'attack'],['idle', 'move', 'attack']]
+        cem = CEMEnv(env, 2, [(1,1), (2,2), (2,1)], [1, 1, 1], [[1],[2]], n_step=2, agent_actions=action_sets, samples=1)
         action = cem.cem_action()
         obs, rew, env_done, info = env.step([[0,0], list(action)])
 
