@@ -15,8 +15,14 @@ def find_player_pos(env_state, player_id):
     return next(o['Location'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
 
 
+def find_player_health(env_state, player_id):
+    # TODO: implement
+    vars = next(o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
+    return vars['health']
+
+
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, seed=None, samples=1):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
@@ -24,6 +30,7 @@ class CEMEnv():
         self.current_player = current_player
         self.env = env
         self.teams = teams
+        self.max_health = max_health
 
         # List all possible actions in the game
         self.action_spaces = [[] for _ in range(env.player_count)] 
@@ -59,17 +66,6 @@ class CEMEnv():
 
 
     def cem_action(self):
-        '''
-        env: the game environment
-        current_player: the id of the player to take an action for
-        steps: the number of steps (n-step empowerment)
-        empowerment_pairs: a list of tuples, where the first element is the playerId whos actuator 
-            is the input and the second element is the playerId whose perceptor is the output of the communication channel
-        empowerment_weights: an array of floats, where the ith element is the weight of the ith empowerment pair to be used 
-            in the action policy
-        samples: How many times to sample the actions to build the conditional probability distribution p(s_t+1|s_t, a). 1 for deterministic games.
-        '''
-
         # Stores the expected empowerment for each empowerment_pair, for each action that can be taken from the current state.
         # For example: [E[E^P]_{a_t}, E[E^T]_{a_t}, E[E^C]_{a_t}], if we were to calculate three different empowerments E^P, E^T and E^C.
         # Here's an example of the structure, if there are 3 empowerment pairs (pair 0, pair 1, pair 2) and 3 actions (a0, a1, a2)
@@ -133,6 +129,7 @@ class CEMEnv():
                 current_env = self.hash_decode[current_hash_and_player[0]]
                 curr_agent_id = current_hash_and_player[1]
                 next_agent_id = (self.current_player + steps_done) % self.player_count + 1
+                health_ratio = find_player_health(current_env.get_state(), curr_agent_id) / self.max_health if self.max_health else 1
                 mapping[current_hash_and_player] = [{} for _ in self.action_spaces[curr_agent_id-1]]
                 # Add to mapping the possible follow-up states with their probabilities, per action
                 for action_idx, action in enumerate(self.action_spaces[curr_agent_id-1]):
@@ -141,6 +138,7 @@ class CEMEnv():
                         # Do the stepping in a cloned environment
                         clone_env = current_env.clone()
                         obs, rew, env_done, info = clone_env.step(self.build_action(action, curr_agent_id))
+                        # If the game ends, the state is saved as simply the winner id.
                         if env_done:
                             for plr, status in info['PlayerResults'].items():
                                 if status == 'Win':
@@ -152,9 +150,9 @@ class CEMEnv():
                         next_state_and_agent = (next_state_hash, next_agent_id)
                         # Increase the probability of reaching this follow-up state from the current state by 1/samples
                         if next_state_and_agent not in mapping[current_hash_and_player][action_idx]:
-                            mapping[current_hash_and_player][action_idx][next_state_and_agent] = 1.0 / samples
-                        else:
-                            mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / samples
+                            mapping[current_hash_and_player][action_idx][next_state_and_agent] = 0
+                        mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / samples
+                        
                         if next_state_hash not in self.hash_decode and not env_done:
                             self.hash_decode[next_state_hash] = clone_env
 
@@ -165,6 +163,16 @@ class CEMEnv():
                             else:
                                 state_q.put(next_state_and_agent)
                                 nodes_in_next_level += 1
+
+                    # Adjust fot health-performance consistency
+                    if self.max_health and health_ratio < 1 - 1e-5:
+                        for following_hash_and_agent in mapping[current_hash_and_player][action_idx]:
+                            if following_hash_and_agent[0] != current_hash_and_player[0]:
+                                mapping[current_hash_and_player][action_idx][following_hash_and_agent] *= health_ratio
+                        no_step_hash = (current_hash_and_player[0], next_agent_id)
+                        if no_step_hash not in mapping[current_hash_and_player][action_idx]:
+                            mapping[current_hash_and_player][action_idx][no_step_hash] = 0
+                        mapping[current_hash_and_player][action_idx][no_step_hash] = 1 - health_ratio + health_ratio * mapping[current_hash_and_player][action_idx][no_step_hash]
 
             # Detect if all states have been reached in this depth (steps from the original state). If so, move to the next depth
             if nodes_left_current_depth == 0:

@@ -38,10 +38,10 @@ def maximise_cem(env, env_done, player_in_turn, info):
     agent_actions = [['idle', 'move', 'heal'],['idle', 'move', 'heal', 'attack'],['idle', 'move', 'attack']]
     # Companion
     if player_in_turn == 2:
-        cem = CEMEnv(env, player_in_turn, [(1,1), (2,2), (2,1)], [1, 0.2, 0.2], [[1,2],[3]], 1, agent_actions)
+        cem = CEMEnv(env, player_in_turn, [(1,1), (2,2), (2,1)], [1, 0.2, 0.2], [[1,2],[3]], 1, agent_actions, max_health=2)
     # Enemy
     elif player_in_turn == 3:
-        cem = CEMEnv(env, player_in_turn, [(1,1), (3,3), (3,1)], [-1, 0.2, 0.1], [[1,2],[3]], 1, agent_actions)
+        cem = CEMEnv(env, player_in_turn, [(1,1), (3,3), (3,1)], [-1, 0.2, 0.1], [[1,2],[3]], 1, agent_actions, max_health=2)
     action = cem.cem_action()
     full_action = [[0,0] for _ in range(env.player_count)]
     full_action[player_in_turn-1] = list(action)
