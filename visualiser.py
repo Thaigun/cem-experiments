@@ -41,9 +41,9 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, samples=1):
             elif other_plr_dir == [-1, 0]:
                 blocked_move_ids.append(1)
             elif other_plr_dir == [0, 1]:
-                blocked_move_ids.append(2)
-            elif other_plr_dir == [0, -1]:
                 blocked_move_ids.append(4)
+            elif other_plr_dir == [0, -1]:
+                blocked_move_ids.append(2)
 
         possible_action_combos = []
         if 'move' in actions_to_ids:
@@ -57,7 +57,7 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, samples=1):
 
     env = orig_env.clone()
     # We have to start with a random step to get an observation because the observation is not cloned.
-    obs, rew, env_done, info = env.step(random_move_action(env, player_id))
+    env.step(random_move_action(env, player_id))
 
     calculated_emps = [{} for _ in emp_pairs]
     for _ in range(2000):
@@ -71,6 +71,6 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, samples=1):
         # This assumes there is a 'move' action with action_ids 1=LEFT, 2=UP, 3=RIGHT, 4=DOWN.
         random_action = random_move_action(env, player_id)
         #obs[player_id-1]
-        obs, rew, done, info = env.step(random_action)
+        env.step(random_action)
         env.render(observer='global')
     return calculated_emps
