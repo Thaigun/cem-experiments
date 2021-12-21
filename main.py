@@ -6,6 +6,7 @@ import numpy as np
 import random
 import empowerment_maximization
 from griddly_cem_agent import CEMEnv
+import visualiser
 
 def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -49,6 +50,11 @@ def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
 
+def visualise_landscape(env):
+    empowerment_maps = visualiser.build_landscape(env, 2, [(2,2), (2,1)], [[1],[2]], 1)
+    for emp_map in empowerment_maps:
+        visualiser.plot_empowerment_landscape(env, emp_map)
+
 if __name__ == '__main__':
     current_path = os.path.dirname(os.path.realpath(__file__))
     env_desc = 'griddly_descriptions/testbed1.yaml'
@@ -74,4 +80,4 @@ if __name__ == '__main__':
     print('heal', 4 + action_names.index('heal'))
     print('attack', 4 + action_names.index('attack'))
     clone_env = env.clone()
-    play(env, fps=30, zoom=3, callback=maximise_cem, keys_to_action=key_mapping)
+    play(env, fps=30, zoom=3, action_callback=maximise_cem, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)

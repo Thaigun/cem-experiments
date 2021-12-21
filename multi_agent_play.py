@@ -9,7 +9,7 @@ def display_arr(screen, arr, video_size, transpose):
     screen.blit(pyg_img, (0, 0))
 
 
-def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=None):
+def play(env, transpose=True, fps=30, zoom=None, action_callback=None, keys_to_action=None, visualiser_callback=None):
     """Allows one to play the game using keyboard.
 
     Arguments
@@ -82,8 +82,8 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
             obs = env.reset()
             
         if player_in_turn > 1:
-            if callback is not None:
-                callback(env, env_done, player_in_turn, info)
+            if action_callback is not None:
+                action_callback(env, env_done, player_in_turn, info)
                 player_in_turn = player_in_turn % env.player_count + 1
 
         else:
@@ -95,6 +95,8 @@ def play(env, transpose=True, fps=30, zoom=None, callback=None, keys_to_action=N
                         pressed_keys.append(event.key)
                     elif event.key == 27:
                         running = False
+                    elif visualiser_callback is not None and event.key == ord('p'):
+                        visualiser_callback(env)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
                         pressed_keys.remove(event.key)

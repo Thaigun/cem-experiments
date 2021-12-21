@@ -1,4 +1,4 @@
-from griddly import GymWrapperFactory, gd, GymWrapper
+from griddly import gd, GymWrapper
 import cProfile
 import os
 from griddly_cem_agent import CEMEnv
