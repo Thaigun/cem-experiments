@@ -11,8 +11,8 @@ def hash_obs(obs, player_pos):
     return hash(byte_repr)
 
 
-def find_player_pos(env_state, player_id):
-    return next(o['Location'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
+def find_player_pos(env, player_id):
+    return list(env.game.get_available_actions(player_id))[0]
 
 
 def find_player_health(env_state, player_id):
@@ -255,7 +255,7 @@ class CEMEnv():
                 else:
                     end_env = self.hash_decode[state_hash]
                     latest_obs = end_env._player_last_observation[perceptor-1]
-                    player_pos = find_player_pos(end_env.get_state(), perceptor)
+                    player_pos = find_player_pos(end_env, perceptor)
                     hashed_obs = hash_obs(latest_obs, player_pos)
                 # Multiple states may lead to same observation, combine them if so
                 if hashed_obs not in states_as_obs[sequence_id]:
