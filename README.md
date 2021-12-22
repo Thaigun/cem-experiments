@@ -17,4 +17,6 @@ If there have been changes to the environment since the last time you ran it, yo
 Once you have the environment active, run `python main.py`.
 
 # Controls
-Move with WASD, skip turn with Q, attack the character in front of you or ahead of you with SPACE, heal the character in front of you with H.
+Move with WASD, attack the character in front of you or ahead of you with SPACE, heal the character in front of you with H.
+
+Print the empowerment heatmaps with P. This takes a while, your system's memory consumption going up and down is the best indicator of it doing some job.

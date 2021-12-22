@@ -7,6 +7,8 @@ import random
 import empowerment_maximization
 from griddly_cem_agent import CEMEnv
 import visualiser
+import configparser
+import json
 
 def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -36,13 +38,9 @@ def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
         return
-    agent_actions = [['idle', 'move', 'heal'],['idle', 'move', 'heal', 'attack'],['idle', 'move', 'attack']]
-    # Companion
-    if player_in_turn == 2:
-        cem = CEMEnv(env, player_in_turn, [(1,1), (2,2), (2,1)], [1, 0.2, 0.2], [[1,2],[3]], 1, agent_actions, max_health=2)
-    # Enemy
-    elif player_in_turn == 3:
-        cem = CEMEnv(env, player_in_turn, [(1,1), (3,3), (3,1)], [-1, 0.2, 0.1], [[1,2],[3]], 1, agent_actions, max_health=2)
+    # Use the config object to set the variables of the CEM agent
+    player_conf = conf_cem_players[player_in_turn]
+    cem = CEMEnv(env, player_in_turn, player_conf['empowerment_pairs'], player_conf['empowerment_weights'], teams, n_step, conf_agent_actions, max_health=max_health)
     action = cem.cem_action()
     full_action = [[0,0] for _ in range(env.player_count)]
     full_action[player_in_turn-1] = list(action)
@@ -50,15 +48,33 @@ def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
 
+
 def visualise_landscape(env):
     empowerment_maps = visualiser.build_landscape(env, 2, [(2,2), (2,1)], [[1],[2]], 1)
     for emp_map in empowerment_maps:
         visualiser.plot_empowerment_landscape(env, emp_map)
 
+
 if __name__ == '__main__':
+    # Read the config file
+    config = configparser.ConfigParser()
+    config.read('game_conf.ini')
+    env_desc = config['DEFAULT']['GriddlyDescription']
+    teams = json.loads(config['DEFAULT']['Teams'])
+    max_health = int(config['DEFAULT']['MaxHealth'])
+    conf_cem_players = {}
+    n_step = int(config['DEFAULT']['NStep'])
+    conf_emp_pairs = json.loads(config['DEFAULT']['EmpowermentPairs'])
+    conf_emp_weights = json.loads(config['DEFAULT']['EmpowermentWeights'])
+    conf_agent_actions = json.loads(config['DEFAULT']['AgentActions'])
+    for i, player_id in enumerate(json.loads(config['DEFAULT']['CEMAgents'])):
+        conf_cem_players[player_id] = {
+            'empowerment_pairs': conf_emp_pairs[i],
+            'empowerment_weights': conf_emp_weights[i]
+        }
+
     current_path = os.path.dirname(os.path.realpath(__file__))
-    env_desc = 'griddly_descriptions/testbed1.yaml'
-    env = GymWrapper(os.path.join(current_path, env_desc),
+    env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', env_desc),
                      player_observer_type=gd.ObserverType.VECTOR,
                      global_observer_type=gd.ObserverType.SPRITE_2D,
                      level=0)
