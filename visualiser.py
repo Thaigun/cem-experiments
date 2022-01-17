@@ -3,6 +3,28 @@ from griddly_cem_agent import find_player_pos, CEMEnv
 import numpy as np
 import random
 
+
+def emp_map_to_str(position_emps):
+    # Find the max and min x and y values from the keys of a calculated_emps dict (the coordinates that were reached)
+    coordinate_list = position_emps.keys()
+    max_x = max(k[0] for k in coordinate_list)
+    min_x = min(k[0] for k in coordinate_list)
+    max_y = max(k[1] for k in coordinate_list)
+    min_y = min(k[1] for k in coordinate_list)
+    # Create a 2D array representing a "heat map" of the empowerment values
+    emp_array = np.zeros((max_x - min_x + 1, max_y - min_y + 1))
+    for k, v in position_emps.items():
+        emp_array[k[1] - min_y][k[0] - min_x] = v
+
+    # Print out emp_array
+    return_str = ''
+    for row in emp_array:
+        for col in row:
+            return_str += "%.2f" % col + " "
+        return_str += "\n"
+    return return_str
+
+
 def plot_empowerment_landscape(env, position_emps):
     # Find the max and min x and y values from the keys of a calculated_emps dict (the coordinates that were reached)
     coordinate_list = position_emps.keys()
