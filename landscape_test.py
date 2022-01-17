@@ -27,5 +27,5 @@ if __name__ == '__main__':
         env.reset()
         calculated_emps = build_landscape(env, player_id, emp_pairs, [[1], [2]], nstep, [['move', 'idle'], ['move', 'idle']], False, 1)
         for emp_pair_i, emp_pair in enumerate(emp_pairs):
-            plot_empowerment_landscape(env, calculated_emps[emp_pair_i])
+            plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
     

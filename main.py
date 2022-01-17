@@ -50,9 +50,20 @@ def maximise_cem(env, env_done, player_in_turn, info):
 
 
 def visualise_landscape(env):
-    empowerment_maps = visualiser.build_landscape(env, 2, [(2,2), (2,1)], teams, 1, conf_agent_actions, max_health)
-    for emp_map in empowerment_maps:
-        visualiser.plot_empowerment_landscape(env, emp_map)
+    visualise_player = 2
+    empowerment_maps = visualiser.build_landscape(env, visualise_player, conf_cem_players[visualise_player]['empowerment_pairs'], teams, 1, conf_agent_actions, max_health)
+    for i, emp_map in enumerate(empowerment_maps):
+        visualiser.emp_map_to_str(emp_map)
+        visualiser.plot_empowerment_landscape(env, emp_map, 'Empowerment: ' + str(conf_cem_players[visualise_player]['empowerment_pairs'][i]))
+    cem_map = {}
+    for pos in empowerment_maps[0]:
+        # In addition, print the CEM map that all different heatmaps weighted and summed
+        cem_sum = 0
+        for emp_pair_i, map in enumerate(empowerment_maps):
+            cem_sum += map[pos] * conf_cem_players[visualise_player]['empowerment_weights'][emp_pair_i]
+        cem_map[pos] = cem_sum
+    visualiser.emp_map_to_str(cem_map)
+    visualiser.plot_empowerment_landscape(env, cem_map, 'CEM heatmap')
 
 
 if __name__ == '__main__':
@@ -67,7 +78,8 @@ if __name__ == '__main__':
     conf_emp_pairs = json.loads(config['DEFAULT']['EmpowermentPairs'])
     conf_emp_weights = json.loads(config['DEFAULT']['EmpowermentWeights'])
     conf_agent_actions = json.loads(config['DEFAULT']['AgentActions'])
-    for i, player_id in enumerate(json.loads(config['DEFAULT']['CEMAgents'])):
+    conf_cem_agents = json.loads(config['DEFAULT']['CEMAgents'])
+    for i, player_id in enumerate(conf_cem_agents):
         conf_cem_players[player_id] = {
             'empowerment_pairs': conf_emp_pairs[i],
             'empowerment_weights': conf_emp_weights[i]

@@ -25,7 +25,7 @@ def emp_map_to_str(position_emps):
     return return_str
 
 
-def plot_empowerment_landscape(env, position_emps):
+def plot_empowerment_landscape(env, position_emps, title):
     # Find the max and min x and y values from the keys of a calculated_emps dict (the coordinates that were reached)
     coordinate_list = position_emps.keys()
     max_x = max(k[0] for k in coordinate_list)
@@ -40,6 +40,7 @@ def plot_empowerment_landscape(env, position_emps):
     ext_visu = 0, 216, 0, 216
     ext_map = 24, 216-24, 24, 216-24
     visu = env.render(observer='global', mode='rgb_array')
+    plt.figure(num=title)
     plt.imshow(visu, extent=ext_visu)
     hmap = plt.imshow(emp_array, cmap='plasma', interpolation='nearest', alpha=0.5, extent=ext_map)
     plt.colorbar(hmap)
@@ -95,10 +96,20 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     for _ in range(2000):
         plr_pos = find_player_pos(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
-            cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
+            cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples, skip_anticipation=True)
+            calculate_separately = []
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
+                if emp_pair[0] != player_id:
+                    calculate_separately.append(emp_pair_i)
+                    continue
                 state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
+            for emp_pair_i in calculate_separately:
+                emp_pair = emp_pairs[emp_pair_i]
+                cem_env = CEMEnv(env, emp_pair[0], [emp_pair], [1], teams, n_step, agent_actions, max_health, seed=1, samples=samples, skip_anticipation=True)
+                state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
+                calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
+
         # Find a random movement action that does not target a populated tile.
         # This assumes there is a 'move' action with action_ids 1=LEFT, 2=UP, 3=RIGHT, 4=DOWN.
         random_action = random_move_action(env, player_id)
