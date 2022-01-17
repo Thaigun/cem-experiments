@@ -54,6 +54,31 @@ Actions:
           Object: plr
           Commands:
             - cascade: _dest
+      - Src:
+          Object: plr
+          Commands:
+            - rot: _dir
+        Dst:
+          Object: wall
+
+  - Name: rotate
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+        2:
+          OrientationVector: [0, -1]
+        3:
+          OrientationVector: [1, 0]
+        4:
+          OrientationVector: [0, 1]
+    Behaviours:
+      - Src:
+          Object: plr
+          Commands:
+            - rot: _dir
+        Dst:
+          Object: plr
 
   - Name: attack
     InputMapping:

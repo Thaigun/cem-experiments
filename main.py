@@ -50,7 +50,7 @@ def maximise_cem(env, env_done, player_in_turn, info):
 
 
 def visualise_landscape(env):
-    empowerment_maps = visualiser.build_landscape(env, 2, [(2,2), (2,1)], [[1],[2]], 1)
+    empowerment_maps = visualiser.build_landscape(env, 2, [(2,2), (2,1)], teams, 1, conf_agent_actions, max_health)
     for emp_map in empowerment_maps:
         visualiser.plot_empowerment_landscape(env, emp_map)
 
