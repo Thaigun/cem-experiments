@@ -22,7 +22,7 @@ def find_player_health(env_state, player_id):
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1, skip_anticipation=False):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
@@ -47,7 +47,10 @@ class CEMEnv():
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
         self.player_count = env.player_count
         # Sn array of how many anticipation steps there are for each empowerment pair, i.e. how many steps before calculating the actual empowerment
+        if not skip_anticipation:
         anticipation_step_counts = [self.calc_anticipation_step_count(current_player, empowerment_pair[0]) for empowerment_pair in empowerment_pairs]
+        else:
+            anticipation_step_counts = [0 for _ in empowerment_pairs]
         # p(S{t+1}|S_t, A_t) for all reachable states.
         self.mapping = self.build_mapping(max(anticipation_step_counts) + n_step * self.player_count, samples)
 
