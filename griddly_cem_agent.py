@@ -48,7 +48,7 @@ class CEMEnv():
         self.player_count = env.player_count
         # Sn array of how many anticipation steps there are for each empowerment pair, i.e. how many steps before calculating the actual empowerment
         if not skip_anticipation:
-        anticipation_step_counts = [self.calc_anticipation_step_count(current_player, empowerment_pair[0]) for empowerment_pair in empowerment_pairs]
+            anticipation_step_counts = [self.calc_anticipation_step_count(current_player, empowerment_pair[0]) for empowerment_pair in empowerment_pairs]
         else:
             anticipation_step_counts = [0 for _ in empowerment_pairs]
         # p(S{t+1}|S_t, A_t) for all reachable states.
