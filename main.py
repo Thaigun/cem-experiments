@@ -51,7 +51,7 @@ def maximise_cem(env, env_done, player_in_turn, info):
 
 def visualise_landscape(env):
     visualise_player = 2
-    empowerment_maps = visualiser.build_landscape(env, visualise_player, conf_cem_players[visualise_player]['empowerment_pairs'], teams, 1, conf_agent_actions, max_health)
+    empowerment_maps = visualiser.build_landscape(env, visualise_player, conf_cem_players[visualise_player]['empowerment_pairs'], teams, n_step, conf_agent_actions, max_health)
     for i, emp_map in enumerate(empowerment_maps):
         visualiser.emp_map_to_str(emp_map)
         visualiser.plot_empowerment_landscape(env, emp_map, 'Empowerment: ' + str(conf_cem_players[visualise_player]['empowerment_pairs'][i]))
@@ -70,15 +70,16 @@ if __name__ == '__main__':
     # Read the config file
     config = configparser.ConfigParser()
     config.read('game_conf.ini')
-    env_desc = config['DEFAULT']['GriddlyDescription']
-    teams = json.loads(config['DEFAULT']['Teams'])
-    max_health = int(config['DEFAULT']['MaxHealth'])
+    active_config = config['active']
+    env_desc = active_config['GriddlyDescription']
+    teams = json.loads(active_config['Teams'])
+    max_health = int(active_config['MaxHealth'])
     conf_cem_players = {}
-    n_step = int(config['DEFAULT']['NStep'])
-    conf_emp_pairs = json.loads(config['DEFAULT']['EmpowermentPairs'])
-    conf_emp_weights = json.loads(config['DEFAULT']['EmpowermentWeights'])
-    conf_agent_actions = json.loads(config['DEFAULT']['AgentActions'])
-    conf_cem_agents = json.loads(config['DEFAULT']['CEMAgents'])
+    n_step = int(active_config['NStep'])
+    conf_emp_pairs = json.loads(active_config['EmpowermentPairs'])
+    conf_emp_weights = json.loads(active_config['EmpowermentWeights'])
+    conf_agent_actions = json.loads(active_config['AgentActions'])
+    conf_cem_agents = json.loads(active_config['CEMAgents'])
     for i, player_id in enumerate(conf_cem_agents):
         conf_cem_players[player_id] = {
             'empowerment_pairs': conf_emp_pairs[i],
