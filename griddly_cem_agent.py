@@ -1,7 +1,8 @@
 from itertools import product
+from tracemalloc import start
 import empowerment_maximization
 import numpy as np
-import queue
+from functools import lru_cache
 import random
 
 
@@ -19,6 +20,22 @@ def find_player_health(env_state, player_id):
     # TODO: implement
     vars = next(o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
     return vars['health']
+
+
+class EnvHashWrapper():
+    def __init__(self, env):
+        self.env = env
+        self.hash = None
+
+    def __hash__(self) -> int:
+        if self.hash is None:
+            self.hash = self.env.get_state()['Hash']
+        return self.hash
+
+    def __eq__(self, __o: object) -> bool:
+        return self.__hash__() == __o.__hash__()
+
+    
 
 
 class CEMEnv():
@@ -52,7 +69,7 @@ class CEMEnv():
         # This action should NOT change anything, it is there because player observations aren't cloned and we might need them.
         cloned_env.step(self.build_action([0,0], current_player))
         self.hash_decode = {env.get_state()['Hash']: cloned_env}
-        self.mapping = {}
+        #self.mapping = {}
         # Maps state hashes to empowerments. Dictionary keys are state hashes and values are lists of empowerments, one/empowerment pair for each state
         self.empowerments = {}
 
@@ -63,7 +80,7 @@ class CEMEnv():
         This can be faster than building the new object from scratch, because for example the mapping can be reused to some extent.
         '''
         # TODO: Potentially clean up mapping, hash_decode and empowerments here a bit more cleverly
-        self.mapping = {}
+        #self.mapping = {}
         self.hash_decode = {}
         self.empowerments = {}
 
@@ -71,7 +88,6 @@ class CEMEnv():
         self.hash_decode[new_env.get_state()['Hash']] = new_env
         self.current_player = current_player
         
-
 
     def calc_anticipation_step_count(self, curr_plr, actuator):
         return (actuator - curr_plr) if actuator > curr_plr else self.player_count - (curr_plr - actuator)
@@ -116,17 +132,16 @@ class CEMEnv():
         return built_action
 
 
+    @lru_cache(maxsize=2500)
     def get_state_mapping(self, env_state, player_id):
         current_hash_and_player = (env_state, player_id)
-        stored_mapping = self.mapping.get(current_hash_and_player, None)
-        if stored_mapping is not None:
-            return stored_mapping
         # Build it lazily
         current_env = self.hash_decode[env_state]
         curr_agent_id = current_hash_and_player[1]
         next_agent_id = player_id % self.player_count + 1
         health_ratio = find_player_health(current_env.get_state(), curr_agent_id) / self.max_health if self.max_health else 1
-        self.mapping[current_hash_and_player] = [{} for _ in self.action_spaces[curr_agent_id-1]]
+
+        result = [{} for _ in self.action_spaces[curr_agent_id-1]]
         for action_idx, action in enumerate(self.action_spaces[curr_agent_id-1]):
             for _ in range(self.samples):
                 clone_env = current_env.clone()
@@ -142,20 +157,20 @@ class CEMEnv():
                     if next_state_hash not in self.hash_decode:
                         self.hash_decode[next_state_hash] = clone_env
                 next_state_and_agent = (next_state_hash, next_agent_id)
-                if next_state_and_agent not in self.mapping[current_hash_and_player][action_idx]:
-                    self.mapping[current_hash_and_player][action_idx][next_state_and_agent] = 0
-                self.mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / self.samples
+                if next_state_and_agent not in result[action_idx]:
+                    result[action_idx][next_state_and_agent] = 0
+                result[action_idx][next_state_and_agent] += 1.0 / self.samples
 
             # Adjust fot health-performance consistency
             if self.max_health and health_ratio < 1 - 1e-5:
-                for following_hash_and_agent in self.mapping[current_hash_and_player][action_idx]:
+                for following_hash_and_agent in result[action_idx]:
                     if following_hash_and_agent[0] != current_hash_and_player[0]:
-                        self.mapping[current_hash_and_player][action_idx][following_hash_and_agent] *= health_ratio
+                        result[action_idx][following_hash_and_agent] *= health_ratio
                 no_step_hash = (current_hash_and_player[0], next_agent_id)
-                if no_step_hash not in self.mapping[current_hash_and_player][action_idx]:
-                    self.mapping[current_hash_and_player][action_idx][no_step_hash] = 0
-                self.mapping[current_hash_and_player][action_idx][no_step_hash] = 1 - health_ratio + health_ratio * self.mapping[current_hash_and_player][action_idx][no_step_hash]
-        return self.mapping[current_hash_and_player]
+                if no_step_hash not in result[action_idx]:
+                    result[action_idx][no_step_hash] = 0
+                result[action_idx][no_step_hash] = 1 - health_ratio + health_ratio * result[action_idx][no_step_hash]
+        return result
 
 
     def build_distribution(self, env_hash, action_seq, action_stepper, active_agent, current_step_agent, perceptor):
@@ -211,10 +226,16 @@ class CEMEnv():
         return pd_s_nstep
 
 
+    @lru_cache(maxsize=3000)
+    def calculate_end_env(start_env, action_seq):
+        c_env = start_env.clone()
+        for action in action_seq:
+            c_env.step(action)
+        return c_env
+
+
+    @lru_cache(maxsize=8000)
     def calculate_state_empowerment(self, state_hash, actuator, perceptor):
-        #saved_emps = self.empowerments.get(state_hash, None)
-        #if (saved_emps is not None and (actuator, perceptor) in saved_emps):
-        #    return saved_emps[(actuator, perceptor)]
         # All possible action combinations of length 'step'
         action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
@@ -241,10 +262,6 @@ class CEMEnv():
         pd_a_opt = empowerment_maximization.blahut_arimoto(states_as_obs, self.rng)
         # Use the optimal distribution to calculate the mutual information (empowerement)
         empowerment = empowerment_maximization.mutual_information(pd_a_opt, states_as_obs)
-        # Store the empowerment for this state
-        #if state_hash not in self.empowerments:
-        #    self.empowerments[state_hash] = {}
-        #self.empowerments[state_hash][(actuator, perceptor)] = empowerment
         return empowerment
 
 

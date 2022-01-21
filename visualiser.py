@@ -119,4 +119,5 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         env.step(orientation_fix)
         cem_env.apply_new_state(env, player_id)
         env.render(observer='global')
+    #print(cem_env.calculate_state_empowerment.cache_info())
     return calculated_emps
