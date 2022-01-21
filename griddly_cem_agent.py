@@ -22,7 +22,7 @@ def find_player_health(env_state, player_id):
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1, skip_anticipation=False):
+    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1):
         self.empowerment_pairs = empowerment_pairs
         self.empowerment_weights = empowerment_weights
         self.samples = samples
@@ -43,25 +43,34 @@ class CEMEnv():
                     for action_id in range(1, env.num_action_ids[action_name]):
                         self.action_spaces[player_i].append((action_type_index, action_id))
         # Will contain the mapping from state hashes to states
-        self.hash_decode = {}
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
         self.player_count = env.player_count
-        # Sn array of how many anticipation steps there are for each empowerment pair, i.e. how many steps before calculating the actual empowerment
-        if not skip_anticipation:
-            anticipation_step_counts = [self.calc_anticipation_step_count(current_player, empowerment_pair[0]) for empowerment_pair in empowerment_pairs]
-        else:
-            anticipation_step_counts = [0 for _ in empowerment_pairs]
-        # p(S{t+1}|S_t, A_t) for all reachable states.
-        self.mapping = self.build_mapping(max(anticipation_step_counts) + n_step * self.player_count, samples)
+
+        # The following dictionaries (hash_decode, mapping, empowerments) will get bloated as the same CEM Agent is used for multiple turns. 
+        # They need a smart way of cleaning up.
+        cloned_env = env.clone()
+        # This action should NOT change anything, it is there because player observations aren't cloned and we might need them.
+        cloned_env.step(self.build_action([0,0], current_player))
+        self.hash_decode = {env.get_state()['Hash']: cloned_env}
+        self.mapping = {}
+        # Maps state hashes to empowerments. Dictionary keys are state hashes and values are lists of empowerments, one/empowerment pair for each state
+        self.empowerments = {}
 
 
-    def apply_new_state(self, new_state):
+    def apply_new_state(self, new_env, current_player):
         '''
         When the game has progressed, this method can be called to update the member variables.
-        This can be faster than building the new object from scratch, because for example the mapping is not entirely recalculated.
-        TODO: Implement!
+        This can be faster than building the new object from scratch, because for example the mapping can be reused to some extent.
         '''
-        pass
+        # TODO: Potentially clean up mapping, hash_decode and empowerments here a bit more cleverly
+        self.mapping = {}
+        self.hash_decode = {}
+        self.empowerments = {}
+
+        self.env = new_env
+        self.hash_decode[new_env.get_state()['Hash']] = new_env
+        self.current_player = current_player
+        
 
 
     def calc_anticipation_step_count(self, curr_plr, actuator):
@@ -107,85 +116,46 @@ class CEMEnv():
         return built_action
 
 
-    # Do a breadth first search on the env to build the mapping from each state to the next states with probabilities. The mapping covers all states that are reachable in 'steps' steps.
-    def build_mapping(self, steps, samples=1):
-        mapping = {}
-        state_q = queue.Queue()
+    def get_state_mapping(self, env_state, player_id):
+        current_hash_and_player = (env_state, player_id)
+        stored_mapping = self.mapping.get(current_hash_and_player, None)
+        if stored_mapping is not None:
+            return stored_mapping
+        # Build it lazily
+        current_env = self.hash_decode[env_state]
+        curr_agent_id = current_hash_and_player[1]
+        next_agent_id = player_id % self.player_count + 1
+        health_ratio = find_player_health(current_env.get_state(), curr_agent_id) / self.max_health if self.max_health else 1
+        self.mapping[current_hash_and_player] = [{} for _ in self.action_spaces[curr_agent_id-1]]
+        for action_idx, action in enumerate(self.action_spaces[curr_agent_id-1]):
+            for _ in range(self.samples):
+                clone_env = current_env.clone()
+                obs, rew, env_done, info = clone_env.step(self.build_action(action, curr_agent_id))
+                #GRAB THIS PART FROM THE OTHER BRANCH.
+                if env_done:
+                    for plr, status in info['PlayerResults'].items():
+                        if status == 'Win':
+                            next_state_hash = int(plr)
+                            break
+                else:
+                    next_state_hash = clone_env.get_state()['Hash']
+                    if next_state_hash not in self.hash_decode:
+                        self.hash_decode[next_state_hash] = clone_env
+                next_state_and_agent = (next_state_hash, next_agent_id)
+                if next_state_and_agent not in self.mapping[current_hash_and_player][action_idx]:
+                    self.mapping[current_hash_and_player][action_idx][next_state_and_agent] = 0
+                self.mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / self.samples
 
-        # Initialize the breadth-first search
-        init_state_hash = self.env.get_state()['Hash']
-        self.hash_decode[init_state_hash] = self.env
-        state_q.put((init_state_hash, self.current_player))
-
-        # Keep track of the depth of the search (how many steps from the initial state)
-        nodes_left_current_depth = 1
-        nodes_in_next_level = 0
-        steps_done = 0
-
-        # Do the breadth-first search
-        while not state_q.empty():
-            current_hash_and_player = state_q.get()
-            nodes_left_current_depth -= 1
-
-            # Being in the mapping means that the state has been visited
-            if current_hash_and_player not in mapping:
-                current_env = self.hash_decode[current_hash_and_player[0]]
-                curr_agent_id = current_hash_and_player[1]
-                next_agent_id = (self.current_player + steps_done) % self.player_count + 1
-                health_ratio = find_player_health(current_env.get_state(), curr_agent_id) / self.max_health if self.max_health else 1
-                mapping[current_hash_and_player] = [{} for _ in self.action_spaces[curr_agent_id-1]]
-                # Add to mapping the possible follow-up states with their probabilities, per action
-                for action_idx, action in enumerate(self.action_spaces[curr_agent_id-1]):
-                    # If the environment is not deterministic, determine the probabilities by sampling
-                    for _ in range(samples):
-                        # Do the stepping in a cloned environment
-                        clone_env = current_env.clone()
-                        obs, rew, env_done, info = clone_env.step(self.build_action(action, curr_agent_id))
-                        # If the game ends, the state is saved as simply the winner id.
-                        if env_done:
-                            for plr, status in info['PlayerResults'].items():
-                                if status == 'Win':
-                                    next_state_hash = int(plr)
-                                    break
-                        else:
-                            next_state_hash = clone_env.get_state()['Hash']
-                        
-                        next_state_and_agent = (next_state_hash, next_agent_id)
-                        # Increase the probability of reaching this follow-up state from the current state by 1/samples
-                        if next_state_and_agent not in mapping[current_hash_and_player][action_idx]:
-                            mapping[current_hash_and_player][action_idx][next_state_and_agent] = 0
-                        mapping[current_hash_and_player][action_idx][next_state_and_agent] += 1.0 / samples
-                        
-                        if next_state_hash not in self.hash_decode and not env_done:
-                            self.hash_decode[next_state_hash] = clone_env
-
-                        # Add each possible follow-up state to the queue, if they have not been visited yet
-                        if next_state_and_agent not in mapping:
-                            if env_done:
-                                mapping[next_state_and_agent] = [{next_state_and_agent: 1.0} for _ in self.action_spaces[next_agent_id-1]]
-                            else:
-                                state_q.put(next_state_and_agent)
-                                nodes_in_next_level += 1
-
-                    # Adjust fot health-performance consistency
-                    if self.max_health and health_ratio < 1 - 1e-5:
-                        for following_hash_and_agent in mapping[current_hash_and_player][action_idx]:
-                            if following_hash_and_agent[0] != current_hash_and_player[0]:
-                                mapping[current_hash_and_player][action_idx][following_hash_and_agent] *= health_ratio
-                        no_step_hash = (current_hash_and_player[0], next_agent_id)
-                        if no_step_hash not in mapping[current_hash_and_player][action_idx]:
-                            mapping[current_hash_and_player][action_idx][no_step_hash] = 0
-                        mapping[current_hash_and_player][action_idx][no_step_hash] = 1 - health_ratio + health_ratio * mapping[current_hash_and_player][action_idx][no_step_hash]
-
-            # Detect if all states have been reached in this depth (steps from the original state). If so, move to the next depth
-            if nodes_left_current_depth == 0:
-                steps_done += 1
-                # Don't search further than the given number of steps from the original state
-                if steps_done >= steps:
-                    return mapping
-                nodes_left_current_depth = nodes_in_next_level
-                nodes_in_next_level = 0    
-        return mapping
+            # Adjust fot health-performance consistency
+            if self.max_health and health_ratio < 1 - 1e-5:
+                for following_hash_and_agent in self.mapping[current_hash_and_player][action_idx]:
+                    if following_hash_and_agent[0] != current_hash_and_player[0]:
+                        self.mapping[current_hash_and_player][action_idx][following_hash_and_agent] *= health_ratio
+                no_step_hash = (current_hash_and_player[0], next_agent_id)
+                if no_step_hash not in self.mapping[current_hash_and_player][action_idx]:
+                    self.mapping[current_hash_and_player][action_idx][no_step_hash] = 0
+                self.mapping[current_hash_and_player][action_idx][no_step_hash] = 1 - health_ratio + health_ratio * self.mapping[current_hash_and_player][action_idx][no_step_hash]
+        return self.mapping[current_hash_and_player]
 
 
     def build_distribution(self, env_hash, action_seq, action_stepper, active_agent, current_step_agent, perceptor):
@@ -229,7 +199,7 @@ class CEMEnv():
         assumed_policy = 1 / len(curr_available_actions)
         for action in curr_available_actions:
             # From the pre-built mapping, get the probability distribution for the next step, given an action
-            next_step_pd_s = self.mapping[(env_hash, current_step_agent)][action]
+            next_step_pd_s = self.get_state_mapping(env_hash, current_step_agent)[action]
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
                 child_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], perceptor)
@@ -242,6 +212,9 @@ class CEMEnv():
 
 
     def calculate_state_empowerment(self, state_hash, actuator, perceptor):
+        #saved_emps = self.empowerments.get(state_hash, None)
+        #if (saved_emps is not None and (actuator, perceptor) in saved_emps):
+        #    return saved_emps[(actuator, perceptor)]
         # All possible action combinations of length 'step'
         action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
@@ -268,6 +241,10 @@ class CEMEnv():
         pd_a_opt = empowerment_maximization.blahut_arimoto(states_as_obs, self.rng)
         # Use the optimal distribution to calculate the mutual information (empowerement)
         empowerment = empowerment_maximization.mutual_information(pd_a_opt, states_as_obs)
+        # Store the empowerment for this state
+        #if state_hash not in self.empowerments:
+        #    self.empowerments[state_hash] = {}
+        #self.empowerments[state_hash][(actuator, perceptor)] = empowerment
         return empowerment
 
 

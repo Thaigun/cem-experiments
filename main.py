@@ -38,9 +38,8 @@ def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
         return
-    # Use the config object to set the variables of the CEM agent
-    player_conf = conf_cem_players[player_in_turn]
-    cem = CEMEnv(env, player_in_turn, player_conf['empowerment_pairs'], player_conf['empowerment_weights'], teams, n_step, conf_agent_actions, max_health=max_health)
+    cem = cems[player_in_turn]
+    cem.apply_new_state(env, player_in_turn)
     action = cem.cem_action()
     full_action = [[0,0] for _ in range(env.player_count)]
     full_action[player_in_turn-1] = list(action)
@@ -92,6 +91,8 @@ if __name__ == '__main__':
                      global_observer_type=gd.ObserverType.SPRITE_2D,
                      level=0)
 
+    env.reset()
+
     action_names = env.gdy.get_action_names()
     key_mapping = {
         # Move actions are action_type 0, the first four are the action_ids for move (directions)
@@ -108,5 +109,8 @@ if __name__ == '__main__':
     print('move', action_names.index('move'))
     print('heal', 4 + action_names.index('heal'))
     print('attack', 4 + action_names.index('attack'))
-    clone_env = env.clone()
+    cems = {}
+    for player_id in conf_cem_players:
+        cems[player_id] = CEMEnv(env, player_id, conf_cem_players[player_id]['empowerment_pairs'], conf_cem_players[player_id]['empowerment_weights'], teams, n_step, conf_agent_actions, max_health=max_health)
+
     play(env, fps=30, zoom=3, action_callback=maximise_cem, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)

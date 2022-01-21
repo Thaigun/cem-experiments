@@ -1,3 +1,4 @@
+from unittest import skip
 import matplotlib.pyplot as plt
 from griddly_cem_agent import find_player_pos, CEMEnv
 import numpy as np
@@ -93,10 +94,10 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     orientation_fix = orientation_fix_action(env, player_id, player_rot)
 
     calculated_emps = [{} for _ in emp_pairs]
+    cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
     for _ in range(2000):
         plr_pos = find_player_pos(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
-            cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples, skip_anticipation=True)
             calculate_separately = []
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
                 if emp_pair[0] != player_id:
@@ -106,8 +107,8 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
             for emp_pair_i in calculate_separately:
                 emp_pair = emp_pairs[emp_pair_i]
-                cem_env = CEMEnv(env, emp_pair[0], [emp_pair], [1], teams, n_step, agent_actions, max_health, seed=1, samples=samples, skip_anticipation=True)
-                state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
+                sep_cem_env = CEMEnv(env, emp_pair[0], [emp_pair], [1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
+                state_emp = sep_cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
 
         # Find a random movement action that does not target a populated tile.
@@ -116,5 +117,6 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         env.step(random_action)
         # Rotate the player to the original orientation
         env.step(orientation_fix)
+        cem_env.apply_new_state(env, player_id)
         env.render(observer='global')
     return calculated_emps
