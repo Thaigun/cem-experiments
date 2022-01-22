@@ -175,7 +175,7 @@ class CEMEnv():
         return built_action
 
 
-    @lru_cache(maxsize=100)
+    @lru_cache(maxsize=1000)
     def get_state_mapping(self, env, player_id):
         # Build it lazily
         next_agent_id = player_id % self.player_count + 1
@@ -312,5 +312,8 @@ class CEMEnv():
         for a in range(0, len(self.action_spaces[self.current_player-1])):
             for state, state_probability in cpd_s_a_anticipation[a].items():
                 expected_empowerments[a] += state_probability * reachable_state_empowerments[state]
-        print(self.get_state_mapping.cache_info())
+        
+        #print("get_state_mapping: ", self.get_state_mapping.cache_info())
+        #print("calculate_state_empowerment: ", self.calculate_state_empowerment.cache_info())
+        
         return expected_empowerments
