@@ -1,6 +1,6 @@
 from unittest import skip
 import matplotlib.pyplot as plt
-from griddly_cem_agent import find_player_pos, CEMEnv
+from griddly_cem_agent import find_player_pos_vanilla, CEMEnv, EnvHashWrapper
 import numpy as np
 import random
 
@@ -58,7 +58,7 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         for i in range(1, env.player_count+1):
             if i == player_id:
                 continue
-            other_plr_pos = find_player_pos(env, i)
+            other_plr_pos = find_player_pos_vanilla(env, i)
             other_plr_dir = [other - this for other, this in zip(other_plr_pos, player_pos)]
             if other_plr_dir == [1,0]:
                 blocked_move_ids.append(3)
@@ -96,19 +96,14 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     calculated_emps = [{} for _ in emp_pairs]
     cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
     for _ in range(2000):
-        plr_pos = find_player_pos(env, player_id)
+        plr_pos = find_player_pos_vanilla(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
-            calculate_separately = []
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
-                if emp_pair[0] != player_id:
-                    calculate_separately.append(emp_pair_i)
-                    continue
-                state_emp = cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
-                calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
-            for emp_pair_i in calculate_separately:
-                emp_pair = emp_pairs[emp_pair_i]
-                sep_cem_env = CEMEnv(env, emp_pair[0], [emp_pair], [1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
-                state_emp = sep_cem_env.calculate_state_empowerment(env.get_state()['Hash'], emp_pair[0], emp_pair[1])
+                #if emp_pair[0] != player_id:
+                #    calculate_separately.append(emp_pair_i)
+                #    continue
+                cem_env.apply_new_state(env, emp_pair[0])
+                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env), emp_pair[0], emp_pair[1])
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
 
         # Find a random movement action that does not target a populated tile.
@@ -117,7 +112,6 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         env.step(random_action)
         # Rotate the player to the original orientation
         env.step(orientation_fix)
-        cem_env.apply_new_state(env, player_id)
         env.render(observer='global')
     #print(cem_env.calculate_state_empowerment.cache_info())
     return calculated_emps

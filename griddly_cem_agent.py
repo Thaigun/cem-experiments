@@ -12,8 +12,12 @@ def hash_obs(obs, player_pos):
     return hash(byte_repr)
 
 
-def find_player_pos(env, player_id):
-    return list(env.get_available_actions(player_id))[0]
+def find_player_pos(wrapped_env, player_id):
+    return list(wrapped_env.get_available_actions(player_id))[0]
+
+
+def find_player_pos_vanilla(env, player_id):
+    return list(env.game.get_available_actions(player_id))[0]
 
 
 def find_player_health(env_state, player_id):
@@ -107,7 +111,7 @@ class CEMEnv():
         self.env = EnvHashWrapper(env)
         self.teams = teams
         self.max_health = max_health
-        self.player_count = env.player_count
+        self.player_count = self.env.player_count
 
         # List all possible actions in the game
         self.action_spaces = [[] for _ in range(self.player_count)] 
@@ -245,11 +249,12 @@ class CEMEnv():
 
         # If this is one of the terminated states, return a mapping where each following active agent action leads to a different outcome
         if isinstance(wrapped_env, GameEndState):
-            if active_agent in self.teams[wrapped_env.winner]:
+            return {wrapped_env: 1.0}
+            #if active_agent in self.teams[wrapped_env.winner]:
                 # Random state hash with probability 1.0, represents a unique state
-                return {self.rng.integers(self.player_count + 1, 4000000000): 1.0}
-            else:
-                return {0: 1.0}
+                #return {self.rng.integers(self.player_count + 1, 4000000000): 1.0}
+            #else:
+            #    return {0: 1.0}
         
         # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
         curr_available_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_spaces[current_step_agent-1]))
@@ -275,20 +280,23 @@ class CEMEnv():
 
 
     @lru_cache(maxsize=8000)
-    def calculate_state_empowerment(self, wrapped_env, actuator, perceptor):
+    def calculate_state_empowerment(self, env, actuator, perceptor):
         # All possible action combinations of length 'step'
         action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=self.n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
-            cpd_S_A_nstep[seq_idx] = self.build_distribution(wrapped_env, action_seq, 0, actuator, actuator, perceptor)
+            cpd_S_A_nstep[seq_idx] = self.build_distribution(env, action_seq, 0, actuator, actuator, perceptor)
         
         # Covert the end states into observations of the active player (actuator of the empowerment pair)
         states_as_obs = [{} for _ in cpd_S_A_nstep]
         for sequence_id, pd_states in enumerate(cpd_S_A_nstep):
             for wrapped_env in pd_states:
                 if isinstance(wrapped_env, GameEndState):
-                    hashed_obs = wrapped_env.winner
+                    if actuator in self.teams[wrapped_env.winner]:
+                        hashed_obs = self.rng.integers(self.player_count + 1, 4000000000)
+                    else:
+                        hashed_obs = wrapped_env.winner
                 else:
                     latest_obs = wrapped_env.player_last_obs(perceptor)
                     player_pos = find_player_pos(wrapped_env, perceptor)
