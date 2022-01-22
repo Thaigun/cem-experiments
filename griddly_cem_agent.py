@@ -126,33 +126,14 @@ class CEMEnv():
         # Will contain the mapping from state hashes to states
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
 
-        # The following dictionaries (hash_decode, mapping, empowerments) will get bloated as the same CEM Agent is used for multiple turns. 
-        # They need a smart way of cleaning up.
-        #cloned_env = env.clone()
-        # This action should NOT change anything, it is there because player observations aren't cloned and we might need them.
-        #cloned_env.step(self.build_action([0,0], current_player))
-        #self.hash_decode = {env.get_state()['Hash']: cloned_env}
-        #self.mapping = {}
-        # Maps state hashes to empowerments. Dictionary keys are state hashes and values are lists of empowerments, one/empowerment pair for each state
-        #self.empowerments = {}
-
 
     def apply_new_state(self, new_env, current_player):
         '''
         When the game has progressed, this method can be called to update the member variables.
         This can be faster than building the new object from scratch, because for example the mapping can be reused to some extent.
         '''
-        # TODO: Potentially clean up mapping, hash_decode and empowerments here a bit more cleverly
-        #self.mapping = {}
-        #self.hash_decode = {}
-        #self.empowerments = {}
         self.env = EnvHashWrapper(new_env)
-        #self.hash_decode[new_env.get_state()['Hash']] = new_env
         self.current_player = current_player
-        
-
-#    def calc_anticipation_step_count(self, curr_plr, actuator):
-#        return (actuator - curr_plr) if actuator > curr_plr else self.player_count - (curr_plr - actuator)
 
 
     def cem_action(self):
@@ -250,11 +231,6 @@ class CEMEnv():
         # If this is one of the terminated states, return a mapping where each following active agent action leads to a different outcome
         if isinstance(wrapped_env, GameEndState):
             return {wrapped_env: 1.0}
-            #if active_agent in self.teams[wrapped_env.winner]:
-                # Random state hash with probability 1.0, represents a unique state
-                #return {self.rng.integers(self.player_count + 1, 4000000000): 1.0}
-            #else:
-            #    return {0: 1.0}
         
         # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
         curr_available_actions = [action_seq[action_stepper]] if active_agent == current_step_agent else range(len(self.action_spaces[current_step_agent-1]))
