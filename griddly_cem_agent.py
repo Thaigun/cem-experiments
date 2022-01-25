@@ -1,9 +1,12 @@
 from itertools import product
-from tracemalloc import start
 import empowerment_maximization
 import numpy as np
 from functools import lru_cache
 import random
+from collections import namedtuple
+
+
+EmpConf = namedtuple('EmpConf', ['empowerment_pairs', 'empowerment_weights'])
 
 
 # Hashes the numpy array of observations
@@ -21,7 +24,6 @@ def find_player_pos_vanilla(env, player_id):
 
 
 def find_player_health(env_state, player_id):
-    # TODO: implement
     vars = next(o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
     return vars['health']
 
@@ -54,43 +56,44 @@ def find_winner(env, info, teams):
 
 class EnvHashWrapper():
     def __init__(self, env):
-        self.env = env
+        self._env = env#.clone()
         self.hash = None
 
     def __hash__(self) -> int:
         if self.hash is None:
-            self.hash = self.env.get_state()['Hash']
+            self.hash = self._env.get_state()['Hash']
         return self.hash
 
     def __eq__(self, __o: object) -> bool:
         return self.__hash__() == __o.__hash__()
 
     def get_state(self):
-        return self.env.get_state()
+        return self._env.get_state()
 
     def get_hash(self):
         if self.hash is None:
-            self.hash = self.env.get_state()['Hash']
+            self.hash = self._env.get_state()['Hash']
 
     def clone(self):
-        return EnvHashWrapper(self.env.clone())
+        return EnvHashWrapper(self._env.clone())
 
     # We change the API here a bit, because we need this object to be immutable
     def step(self, actions):
-        clone_env = self.env.clone()
+        clone_env = self._env.clone()
         obs, rew, env_done, info = clone_env.step(actions)
         return EnvHashWrapper(clone_env), obs, rew, env_done, info
 
     def get_available_actions(self, player_id):
-        return self.env.game.get_available_actions(player_id)
+        return self._env.game.get_available_actions(player_id)
 
     def player_last_obs(self, player_id):
-        # TODO: if this is not found, take an empty step to create the observations
-        return self.env._player_last_observation[player_id - 1]
+        if not self._env._player_last_observation:
+            self._env.step([[0, 0] for _ in range(self.player_count)])
+        return self._env._player_last_observation[player_id - 1]
 
     @property
     def player_count(self):
-        return self.env.player_count
+        return self._env.player_count
 
 
 class GameEndState():
@@ -102,16 +105,12 @@ class GameEndState():
 
 
 class CEMEnv():
-    def __init__(self, env, current_player, empowerment_pairs, empowerment_weights, teams, n_step, agent_actions=None, max_health=False, seed=None, samples=1):
-        self.empowerment_pairs = empowerment_pairs
-        self.empowerment_weights = empowerment_weights
+    def __init__(self, env, empowerment_confs, teams, agent_actions=None, max_healths=False, seed=None, samples=1):
+        self.empowerment_confs = empowerment_confs
         self.samples = samples
-        self.n_step = n_step
-        self.current_player = current_player
-        self.env = EnvHashWrapper(env)
         self.teams = teams
-        self.max_health = max_health
-        self.player_count = self.env.player_count
+        self.max_healths = max_healths
+        self.player_count = env.player_count
 
         # List all possible actions in the game
         self.action_spaces = [[] for _ in range(self.player_count)] 
@@ -127,16 +126,7 @@ class CEMEnv():
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
 
 
-    def apply_new_state(self, new_env, current_player):
-        '''
-        When the game has progressed, this method can be called to update the member variables.
-        This can be faster than building the new object from scratch, because for example the mapping can be reused to some extent.
-        '''
-        self.env = EnvHashWrapper(new_env)
-        self.current_player = current_player
-
-
-    def cem_action(self):
+    def cem_action(self, env, player_id, n_step):
         # Stores the expected empowerment for each empowerment_pair, for each action that can be taken from the current state.
         # For example: [E[E^P]_{a_t}, E[E^T]_{a_t}, E[E^C]_{a_t}], if we were to calculate three different empowerments E^P, E^T and E^C.
         # Here's an example of the structure, if there are 3 empowerment pairs (pair 0, pair 1, pair 2) and 3 actions (a0, a1, a2)
@@ -146,18 +136,18 @@ class CEMEnv():
         #                     |---pair 0----|  |----pair 1---|  |---pair 2----|
         expected_empowerments_per_pair = []
 
-        for emp_pair in self.empowerment_pairs:
-            expected_empowerments = self.calculate_expected_empowerments(emp_pair)
+        for emp_pair in self.empowerment_confs[player_id].empowerment_pairs:
+            expected_empowerments = self.calculate_expected_empowerments(env, player_id, emp_pair, n_step)
             expected_empowerments_per_pair.append(expected_empowerments)
 
         EPSILON = 1e-5
         best_actions = []
         best_rewards = []
         # Find the action index that yields the highest expected empowerment
-        for a in range(len(self.action_spaces[self.current_player-1])):
+        for a in range(len(self.action_spaces[player_id-1])):
             policy_reward = 0
-            for e in range(len(self.empowerment_pairs)):
-                policy_reward += self.empowerment_weights[e] * expected_empowerments_per_pair[e][a]
+            for e in range(len(self.empowerment_confs[player_id].empowerment_pairs)):
+                policy_reward += self.empowerment_confs[player_id].empowerment_weights[e] * expected_empowerments_per_pair[e][a]
             if not len(best_rewards) or policy_reward >= max(best_rewards) + EPSILON:
                 best_rewards = [policy_reward]
                 best_actions = [a]
@@ -165,7 +155,7 @@ class CEMEnv():
                 best_rewards.append(policy_reward)
                 best_actions.append(a)
         
-        return self.action_spaces[self.current_player-1][random.choice(best_actions)]
+        return self.action_spaces[player_id-1][random.choice(best_actions)]
 
 
     # Builds the action that can be passed to the Griddly environment
@@ -179,7 +169,7 @@ class CEMEnv():
     def get_state_mapping(self, env, player_id):
         # Build it lazily
         next_agent_id = player_id % self.player_count + 1
-        health_ratio = find_player_health(env.get_state(), player_id) / self.max_health if self.max_health else 1
+        health_ratio = find_player_health(env.get_state(), player_id) / self.max_healths[player_id-1] if self.max_healths else 1
         current_env_and_player = (env, player_id)
         result = [{} for _ in self.action_spaces[player_id-1]]
         for action_idx, action in enumerate(self.action_spaces[player_id-1]):
@@ -196,7 +186,7 @@ class CEMEnv():
                 result[action_idx][next_env_and_agent] += 1.0 / self.samples
 
             # Adjust fot health-performance consistency
-            if self.max_health and health_ratio < 1 - 1e-5:
+            if self.max_healths and health_ratio < 1 - 1e-5:
                 for following_hash_and_agent in result[action_idx]:
                     if following_hash_and_agent[0] != current_env_and_player[0]:
                         result[action_idx][following_hash_and_agent] *= health_ratio
@@ -207,7 +197,7 @@ class CEMEnv():
         return result
 
 
-    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor):
+    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False):
         '''
         Builds the distribution p(S_t+n|s_t, a_t^n)
         s_t is given by wrapped_env
@@ -256,9 +246,9 @@ class CEMEnv():
 
 
     @lru_cache(maxsize=8000)
-    def calculate_state_empowerment(self, env, actuator, perceptor):
+    def calculate_state_empowerment(self, env, actuator, perceptor, n_step):
         # All possible action combinations of length 'step'
-        action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=self.n_step)]
+        action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
@@ -288,14 +278,14 @@ class CEMEnv():
         return empowerment
 
 
-    def calculate_expected_empowerments(self, emp_pair):
+    def calculate_expected_empowerments(self, env, current_player, emp_pair, n_step):
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
         # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
-        cpd_s_a_anticipation = [None] * len(self.action_spaces[self.current_player-1])
-        for action_idx, action in enumerate(self.action_spaces[self.current_player-1]):
-            cpd_s_a_anticipation[action_idx] = self.build_distribution(self.env, [action_idx], 0, self.current_player, self.current_player, emp_pair[0])
+        cpd_s_a_anticipation = [None] * len(self.action_spaces[current_player-1])
+        for action_idx, action in enumerate(self.action_spaces[current_player-1]):
+            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(env.clone()), [action_idx], 0, current_player, current_player, emp_pair[0])
         # Make a flat list of all the reachable states
         reachable_states = set()
         for cpd_s in cpd_s_a_anticipation:
@@ -305,11 +295,11 @@ class CEMEnv():
         reachable_state_empowerments = {}
         # Calculate the n-step empowerment for each state that was found earlier
         for state in reachable_states:
-            empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1])
+            empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1], n_step)
             reachable_state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
-        expected_empowerments = np.zeros(len(self.action_spaces[self.current_player-1]))
-        for a in range(0, len(self.action_spaces[self.current_player-1])):
+        expected_empowerments = np.zeros(len(self.action_spaces[current_player-1]))
+        for a in range(0, len(self.action_spaces[current_player-1])):
             for state, state_probability in cpd_s_a_anticipation[a].items():
                 expected_empowerments[a] += state_probability * reachable_state_empowerments[state]
         

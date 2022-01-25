@@ -5,10 +5,11 @@ from griddly import GymWrapper, gd
 import numpy as np
 import random
 import empowerment_maximization
-from griddly_cem_agent import CEMEnv
+from griddly_cem_agent import CEMEnv, EmpConf
 import visualiser
 import configparser
 import json
+from collections import namedtuple
 
 def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -38,9 +39,7 @@ def maximise_cem(env, env_done, player_in_turn, info):
     if env_done:
         env.reset()
         return
-    cem = cems[player_in_turn]
-    cem.apply_new_state(env, player_in_turn)
-    action = cem.cem_action()
+    action = cem.cem_action(env, player_in_turn, n_step)
     full_action = [[0,0] for _ in range(env.player_count)]
     full_action[player_in_turn-1] = list(action)
     obs, rew, env_done, info = env.step(full_action)
@@ -109,8 +108,14 @@ if __name__ == '__main__':
     print('move', action_names.index('move'))
     print('heal', 4 + action_names.index('heal'))
     print('attack', 4 + action_names.index('attack'))
-    cems = {}
+    
+    empowerment_confs = {}
+    agent_actions = []
+    max_healths = []
     for player_id in conf_cem_players:
-        cems[player_id] = CEMEnv(env, player_id, conf_cem_players[player_id]['empowerment_pairs'], conf_cem_players[player_id]['empowerment_weights'], teams, n_step, conf_agent_actions, max_health=max_health)
+        empowerment_confs[player_id] = (EmpConf(conf_cem_players[player_id]['empowerment_pairs'], conf_cem_players[player_id]['empowerment_weights']))
+        agent_actions.append(conf_agent_actions[player_id])
+        max_healths.append(max_health)
+    cem = CEMEnv(env, empowerment_confs, teams, agent_actions, max_healths)
 
     play(env, fps=30, zoom=3, action_callback=maximise_cem, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)

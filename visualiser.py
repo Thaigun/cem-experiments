@@ -1,6 +1,6 @@
 from unittest import skip
 import matplotlib.pyplot as plt
-from griddly_cem_agent import find_player_pos_vanilla, CEMEnv, EnvHashWrapper
+from griddly_cem_agent import find_player_pos_vanilla, CEMEnv, EnvHashWrapper, EmpConf
 import numpy as np
 import random
 
@@ -94,16 +94,13 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     orientation_fix = orientation_fix_action(env, player_id, player_rot)
 
     calculated_emps = [{} for _ in emp_pairs]
-    cem_env = CEMEnv(env, player_id, emp_pairs, [1, 1], teams, n_step, agent_actions, max_health, seed=1, samples=samples)
+    emp_confs = EmpConf(emp_pairs, [1 for _ in emp_pairs])
+    cem_env = CEMEnv(env, [emp_confs], teams, agent_actions, max_healths=[max_health for _ in agent_actions], seed=1, samples=samples)
     for _ in range(2000):
         plr_pos = find_player_pos_vanilla(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
-                #if emp_pair[0] != player_id:
-                #    calculate_separately.append(emp_pair_i)
-                #    continue
-                cem_env.apply_new_state(env, emp_pair[0])
-                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env), emp_pair[0], emp_pair[1])
+                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step)
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
 
         # Find a random movement action that does not target a populated tile.
@@ -113,5 +110,4 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         # Rotate the player to the original orientation
         env.step(orientation_fix)
         env.render(observer='global')
-    #print(cem_env.calculate_state_empowerment.cache_info())
     return calculated_emps
