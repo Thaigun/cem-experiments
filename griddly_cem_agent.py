@@ -55,8 +55,10 @@ def find_winner(env, info, teams):
 
 
 class EnvHashWrapper():
+    # This is a bit dangerous, but the env that is given to the constructor must not be stepped.
+    # If we can find a way to not lose too much performance by cloning it here in the constructor, that would be perfect.
     def __init__(self, env):
-        self._env = env#.clone()
+        self._env = env
         self.hash = None
 
     def __hash__(self) -> int:
@@ -102,6 +104,12 @@ class GameEndState():
 
     def __hash__(self) -> int:
         return self.winner
+
+    def __eq__(self, __o: object) -> bool:
+        try:
+            return self.winner == __o.winner
+        except:
+            return False
 
 
 class CEMEnv():
@@ -165,38 +173,34 @@ class CEMEnv():
         return built_action
 
 
-    @lru_cache(maxsize=1000)
-    def get_state_mapping(self, env, player_id):
+    @lru_cache(maxsize=5000)
+    def get_state_mapping(self, env, player_id, action):
         # Build it lazily
-        next_agent_id = player_id % self.player_count + 1
         health_ratio = find_player_health(env.get_state(), player_id) / self.max_healths[player_id-1] if self.max_healths else 1
-        current_env_and_player = (env, player_id)
-        result = [{} for _ in self.action_spaces[player_id-1]]
-        for action_idx, action in enumerate(self.action_spaces[player_id-1]):
-            for _ in range(self.samples):
-                clone_env, obs, rew, env_done, info = env.step(self.build_action(action, player_id))
+        result = {}
+        for _ in range(self.samples):
+            clone_env, obs, rew, env_done, info = env.step(self.build_action(action, player_id))
+            if (env_done):
                 game_winner = find_winner(clone_env, info, self.teams)
                 if game_winner != -1:
                     next_env = GameEndState(game_winner)
-                else:
-                    next_env = clone_env
-                next_env_and_agent = (next_env, next_agent_id)
-                if next_env_and_agent not in result[action_idx]:
-                    result[action_idx][next_env_and_agent] = 0
-                result[action_idx][next_env_and_agent] += 1.0 / self.samples
+            else:
+                next_env = clone_env
+            if next_env not in result:
+                result[next_env] = 0
+            result[next_env] += 1.0 / self.samples
 
-            # Adjust fot health-performance consistency
-            if self.max_healths and health_ratio < 1 - 1e-5:
-                for following_hash_and_agent in result[action_idx]:
-                    if following_hash_and_agent[0] != current_env_and_player[0]:
-                        result[action_idx][following_hash_and_agent] *= health_ratio
-                no_step_hash = (current_env_and_player[0], next_agent_id)
-                if no_step_hash not in result[action_idx]:
-                    result[action_idx][no_step_hash] = 0
-                result[action_idx][no_step_hash] = 1 - health_ratio + health_ratio * result[action_idx][no_step_hash]
+        # Adjust fot health-performance consistency
+        if self.max_healths and health_ratio < 1 - 1e-5:
+            for following_hash in result:
+                if following_hash != env:
+                    result[following_hash] *= health_ratio
+            if env not in result:
+                result[env] = 0
+            result[env] = 1 - health_ratio + health_ratio * result[env]
         return result
 
-
+    #@lru_cache(maxsize=2000)
     def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False):
         '''
         Builds the distribution p(S_t+n|s_t, a_t^n)
@@ -233,10 +237,11 @@ class CEMEnv():
         assumed_policy = 1 / len(curr_available_actions)
         for action in curr_available_actions:
             # From the pre-built mapping, get the probability distribution for the next step, given an action
-            next_step_pd_s = self.get_state_mapping(wrapped_env, current_step_agent)[action]
+            next_step_pd_s = self.get_state_mapping(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
-                child_distribution = self.build_distribution(next_state[0], action_seq, next_action_step, active_agent, next_state[1], perceptor)
+                next_step_agent = current_step_agent % self.player_count + 1
+                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, next_step_agent, perceptor)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
@@ -245,10 +250,9 @@ class CEMEnv():
         return pd_s_nstep
 
 
-    @lru_cache(maxsize=8000)
     def calculate_state_empowerment(self, env, actuator, perceptor, n_step):
         # All possible action combinations of length 'step'
-        action_sequences = [list(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=n_step)]
+        action_sequences = [tuple(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
@@ -285,7 +289,7 @@ class CEMEnv():
         # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
         cpd_s_a_anticipation = [None] * len(self.action_spaces[current_player-1])
         for action_idx, action in enumerate(self.action_spaces[current_player-1]):
-            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(env.clone()), [action_idx], 0, current_player, current_player, emp_pair[0])
+            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(env.clone()), (action_idx,), 0, current_player, current_player, emp_pair[0])
         # Make a flat list of all the reachable states
         reachable_states = set()
         for cpd_s in cpd_s_a_anticipation:

@@ -21,3 +21,5 @@ if __name__ == '__main__':
             obs, rew, env_done, info = env.step([[0,0], list(action)])
 
     pr.print_stats(sort='cumtime')
+
+    print('get_state_mapping: ', cem.get_state_mapping.cache_info())

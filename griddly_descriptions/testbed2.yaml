@@ -48,6 +48,15 @@ Actions:
       - Src:
           Object: plr
           Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: plr
+          Commands:
+            - cascade: _dest
+      - Src:
+          Object: plr
+          Commands:
             - rot: _dir
         Dst:
           Object: wall

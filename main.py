@@ -42,6 +42,7 @@ def maximise_cem(env, env_done, player_in_turn, info):
     action = cem.cem_action(env, player_in_turn, n_step)
     full_action = [[0,0] for _ in range(env.player_count)]
     full_action[player_in_turn-1] = list(action)
+    print('Agent ', str(player_in_turn), ' chose action ', action)
     obs, rew, env_done, info = env.step(full_action)
     if env_done:
         env.reset()
@@ -105,17 +106,11 @@ if __name__ == '__main__':
         (ord('h'),): [action_names.index('heal'), 1],
         (ord(' '),): [action_names.index('attack'), 1],
         }
-    print('move', action_names.index('move'))
-    print('heal', 4 + action_names.index('heal'))
-    print('attack', 4 + action_names.index('attack'))
     
     empowerment_confs = {}
-    agent_actions = []
-    max_healths = []
-    for player_id in conf_cem_players:
+    for i, player_id in enumerate(conf_cem_players):
         empowerment_confs[player_id] = (EmpConf(conf_cem_players[player_id]['empowerment_pairs'], conf_cem_players[player_id]['empowerment_weights']))
-        agent_actions.append(conf_agent_actions[player_id])
-        max_healths.append(max_health)
-    cem = CEMEnv(env, empowerment_confs, teams, agent_actions, max_healths)
+
+    cem = CEMEnv(env, empowerment_confs, teams, conf_agent_actions, [max_health for _ in conf_agent_actions])
 
     play(env, fps=30, zoom=3, action_callback=maximise_cem, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)
