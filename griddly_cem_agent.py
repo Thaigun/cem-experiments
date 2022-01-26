@@ -11,11 +11,14 @@ EmpConf = namedtuple('EmpConf', ['empowerment_pairs', 'empowerment_weights'])
 
 # Hashes the numpy array of observations
 def hash_obs(obs, player_pos):
-    byte_repr = obs.tobytes() + bytes(player_pos)
-    return hash(byte_repr)
+    pos_bytes = bytes(player_pos) if player_pos is not None else b''
+    return hash(obs.tobytes() + pos_bytes)
 
 
 def find_player_pos(wrapped_env, player_id):
+    agent_actions = wrapped_env.get_available_actions(player_id)
+    if not agent_actions:
+        return None
     return list(wrapped_env.get_available_actions(player_id))[0]
 
 

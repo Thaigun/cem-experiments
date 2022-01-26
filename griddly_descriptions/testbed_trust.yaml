@@ -19,16 +19,9 @@ Environment:
       TrackAvatar: true
       Height: 5
       Width: 5
-  Variables:
-    - Name: players_alive
-      InitialValue: 2
-      PerPlayer: false
-    - Name: player_done
-      InitialValue: 0
-      PerPlayer: true
   Termination:
-    End:
-      - eq: [players_alive, 1]
+    Lose:
+      - eq: [plr:count, 10]
   Levels:
     - |
       w w w w w w w w w 
@@ -109,8 +102,6 @@ Actions:
             - lte:
                 Arguments: [health, 0]
                 Commands:
-                  - decr: players_alive
-                  - set: [ player_done, 1 ]
                   - remove: true
 
   - Name: ranged_projectile
@@ -143,8 +134,6 @@ Actions:
             - lte:
                 Arguments: [health, 0]
                 Commands:
-                  - decr: players_alive
-                  - set: [ player_done, 1 ]
                   - remove: true
 
   - Name: heal

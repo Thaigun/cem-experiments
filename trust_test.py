@@ -19,7 +19,7 @@ if __name__ == '__main__':
     player_id = 2
     emp_pairs = [(2,2)]
     
-    for nstep in range(2, 3):
+    for nstep in range(1, 2):
         print('nstep: ', nstep)
         env.reset()
         calculated_emps = build_landscape(env, player_id, emp_pairs, [[1,2]], nstep, [['move', 'idle', 'attack'], ['move', 'idle']], 1, 1)
