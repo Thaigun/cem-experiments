@@ -11,8 +11,9 @@ EmpConf = namedtuple('EmpConf', ['empowerment_pairs', 'empowerment_weights'])
 
 # Hashes the numpy array of observations
 def hash_obs(obs, player_pos):
-    pos_bytes = bytes(player_pos) if player_pos is not None else b''
-    return hash(obs.tobytes() + pos_bytes)
+    if player_pos is None:
+        return hash(b'a')
+    return hash(obs.tobytes() + bytes(player_pos))
 
 
 def find_player_pos(wrapped_env, player_id):
@@ -65,9 +66,7 @@ class EnvHashWrapper():
         self.hash = None
 
     def __hash__(self) -> int:
-        if self.hash is None:
-            self.hash = self._env.get_state()['Hash']
-        return self.hash
+        return self.get_hash()
 
     def __eq__(self, __o: object) -> bool:
         return self.__hash__() == __o.__hash__()
@@ -78,6 +77,7 @@ class EnvHashWrapper():
     def get_hash(self):
         if self.hash is None:
             self.hash = self._env.get_state()['Hash']
+        return self.hash
 
     def clone(self):
         return EnvHashWrapper(self._env.clone())
@@ -273,7 +273,8 @@ class CEMEnv():
                 else:
                     latest_obs = wrapped_env.player_last_obs(perceptor)
                     player_pos = find_player_pos(wrapped_env, perceptor)
-                    hashed_obs = hash_obs(latest_obs, player_pos)
+                    # If the player was not found, we assume the player is dead. In that case, the hashed observation is the player's id
+                    hashed_obs = hash_obs(latest_obs, player_pos) if player_pos is not None else hash(actuator)
                 # Multiple states may lead to same observation, combine them if so
                 if hashed_obs not in states_as_obs[sequence_id]:
                     states_as_obs[sequence_id][hashed_obs] = 0
