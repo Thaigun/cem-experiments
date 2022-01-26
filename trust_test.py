@@ -17,12 +17,12 @@ if __name__ == '__main__':
                      level=0)
 
     player_id = 2
-    emp_pairs = [(2,2), (2,1)]
+    emp_pairs = [(2,2)]
     
-    for nstep in range(1, 2):
+    for nstep in range(2, 3):
         print('nstep: ', nstep)
         env.reset()
-        calculated_emps = build_landscape(env, player_id, emp_pairs, [[1,2]], nstep, [['move', 'idle', 'attack'], ['move', 'idle', 'attack']], 1, 1)
+        calculated_emps = build_landscape(env, player_id, emp_pairs, [[1,2]], nstep, [['move', 'idle', 'attack'], ['move', 'idle']], 1, 1)
         for emp_pair_i, emp_pair in enumerate(emp_pairs):
             print(emp_map_to_str(calculated_emps[emp_pair_i]))
             plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
