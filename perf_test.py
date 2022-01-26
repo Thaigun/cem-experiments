@@ -22,4 +22,4 @@ if __name__ == '__main__':
 
     pr.print_stats(sort='cumtime')
 
-    print('get_state_mapping: ', cem.get_state_mapping.cache_info())
+    print('get_state_mapping: ', cem.calc_cpd_s_a.cache_info())
