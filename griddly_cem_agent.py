@@ -28,8 +28,10 @@ def find_player_pos_vanilla(env, player_id):
 
 
 def find_player_health(env_state, player_id):
-    vars = next(o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
-    return vars['health']
+    player_variables = [o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id]
+    if not player_variables:
+        return 0
+    return player_variables[0]['health']
 
 
 def find_alive_players(env):
@@ -180,6 +182,10 @@ class CEM():
     def calc_cpd_s_a(self, env, player_id, action):
         # Build it lazily
         health_ratio = find_player_health(env.get_state(), player_id) / self.max_healths[player_id-1] if self.max_healths else 1
+        # if the player is dead, the empowerment is 0
+        if health_ratio == 0:
+            return {env: 1.0}
+
         result = {}
         for _ in range(self.samples):
             clone_env, obs, rew, env_done, info = env.step(self.build_action(action, player_id))
@@ -195,16 +201,24 @@ class CEM():
 
         # Adjust for health-performance consistency
         if self.max_healths and health_ratio < 1 - 1e-5:
-            for following_env in result:
-                if following_env != env:
-                    result[following_env] *= health_ratio
-            if env not in result:
-                result[env] = 0
-            result[env] = 1 - health_ratio + health_ratio * result[env]
+            self.health_perf_consistency(env, health_ratio, result)
         return result
 
+
+    def health_perf_consistency(self, env, health_ratio, transitions):
+        # If the following env is not the current_env, adjust the transition probability with health_ratio
+        for next_env in transitions:
+            if next_env != env:
+                transitions[next_env] *= health_ratio
+        # Add the current env to the possible transitions
+        if env not in transitions:
+            transitions[env] = 0
+        # Probability of staying still is its original probability and "leftovers" of the other states.
+        transitions[env] = 1 - health_ratio + health_ratio * transitions[env]
+
+
     #@lru_cache(maxsize=2000)
-    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False):
+    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False, trust_correction_steps=None):
         '''
         Recursive function
         Builds the distribution p(S_t+n|s_t, a_t^n)
@@ -219,6 +233,7 @@ class CEM():
             current_step_player                 -> the player whose turn it is next, if this is the active player, then we use the action sequence. Otherwise, we build the distribution for all possible actions
             perceptor                           -> the agent until whose perception the distribution is built, after all actions have been taken
             return_obs                          -> if true, we don't return the end states but corresponding observations
+            trust_correction_steps              -> an array of boolean values, indicating which of the following steps should be trust_corrected
 
         Returns:
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
@@ -235,31 +250,56 @@ class CEM():
         next_action_step = action_stepper + 1 if active_agent == current_step_agent else action_stepper
 
         pd_s_nstep = {}
-        
+        active_agent_team = next(team for team in self.teams if active_agent in team)
+
         # If we step forward with multiple actions, we assume uniform distribution of those actions.
         assumed_policy = 1.0 / len(curr_available_actions)
+        # Sum up the total probability of all possible actions so we can normalize in the end if needed
+        total_prob = 0
         for action in curr_available_actions:
             # Get the probability distribution for the next step, given an action
             next_step_pd_s = self.calc_cpd_s_a(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
+            correct_for_trust = trust_correction_steps and len(trust_correction_steps) > 0 and trust_correction_steps[0]
+
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
                 next_step_agent = current_step_agent % self.player_count + 1
-                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, next_step_agent, perceptor, return_obs)
+                following_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
+                # If the follow-up state has zero empowerment for the active agent and the current state doesn't we skip the action
+                # Because we assume the player in the same team wouldn't reduce our empowerment to zero.
+                if correct_for_trust and current_step_agent in active_agent_team and next_state_prob > 0.01:
+                    follow_up_emp = self.calculate_state_empowerment(next_state, active_agent, active_agent, 1)
+                    if follow_up_emp == 0:
+                        current_state_emp = self.calculate_state_empowerment(wrapped_env, active_agent, active_agent, 1)
+                        if current_state_emp != 0:
+                            break
+            
+                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, next_step_agent, perceptor, return_obs, following_trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
                         pd_s_nstep[next_env] = 0
-                    pd_s_nstep[next_env] += child_distribution[next_env] * assumed_policy * next_state_prob
+                    adjusted_prob = child_distribution[next_env] * assumed_policy * next_state_prob
+                    pd_s_nstep[next_env] += adjusted_prob
+                    total_prob += adjusted_prob
+        if total_prob > 0 and total_prob < 1 - 1e-5:
+            for state in pd_s_nstep:
+                pd_s_nstep[state] /= total_prob
         return pd_s_nstep
 
 
-    def calculate_state_empowerment(self, env, actuator, perceptor, n_step):
+    @lru_cache(maxsize=8000)
+    def calculate_state_empowerment(self, wrapped_env, actuator, perceptor, n_step, trust_correction_steps=None):
+        # If the player isn't alive anymore, we assume the empowerment to be zero
+        if find_player_pos(wrapped_env, actuator) is None:
+            return 0
+
         # All possible action combinations of length 'step'
         action_sequences = [tuple(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
-            cpd_S_A_nstep[seq_idx] = self.build_distribution(env, action_seq, 0, actuator, actuator, perceptor, True)
+            cpd_S_A_nstep[seq_idx] = self.build_distribution(wrapped_env, action_seq, 0, actuator, actuator, perceptor, True, trust_correction_steps)
             
         # Use the Blahut-Arimoto algorithm to calculate the optimal probability distribution
         pd_a_opt = empowerment_maximization.blahut_arimoto(cpd_S_A_nstep, self.rng)
@@ -268,14 +308,14 @@ class CEM():
         return empowerment
 
 
-    def calculate_expected_empowerments(self, env, current_player, emp_pair, n_step):
+    def calculate_expected_empowerments(self, gym_env, current_player, emp_pair, n_step, trust_correction_steps=None):
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
         # Find the probability of follow-up states for when the actuator is in turn. p(s|s_t, a_t), s = state when actuator is in turn
         cpd_s_a_anticipation = [None] * len(self.action_spaces[current_player-1])
         for action_idx, action in enumerate(self.action_spaces[current_player-1]):
-            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(env.clone()), (action_idx,), 0, current_player, current_player, emp_pair[0])
+            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(gym_env.clone()), (action_idx,), 0, current_player, current_player, emp_pair[0], trust_correction_steps=trust_correction_steps)
         # Make a flat list of all the reachable states
         reachable_states = set()
         for cpd_s in cpd_s_a_anticipation:

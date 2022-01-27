@@ -48,7 +48,7 @@ def plot_empowerment_landscape(env, position_emps, title):
     plt.show()
 
 
-def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions, max_health, samples=1):
+def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions, max_health, samples=1, trust_correction_steps=None):
     def random_move_action(env, player_id):
         available_actions = env.game.get_available_actions(player_id)
         player_pos = list(available_actions)[0]
@@ -101,7 +101,7 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
         plr_pos = find_player_pos_vanilla(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
-                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step)
+                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction_steps)
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
 
         # Find a random movement action that does not target a populated tile.
