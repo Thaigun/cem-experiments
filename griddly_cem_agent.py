@@ -65,6 +65,8 @@ class EnvHashWrapper():
     # This is a bit dangerous, but the env that is given to the constructor must not be stepped.
     # If we can find a way to not lose too much performance by cloning it here in the constructor, that would be perfect.
     def __init__(self, env):
+        if not env._is_clone:
+            raise ValueError('The environment given to EnvHashWrapper must be a clone of an original environment.')
         self._env = env
         self.hash = None
 
