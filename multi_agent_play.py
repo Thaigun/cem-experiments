@@ -106,8 +106,8 @@ def play(env, transpose=True, fps=30, zoom=None, action_callback=None, keys_to_a
                     screen = pygame.display.set_mode(video_size)
                     print(video_size)
 
-            action = keys_to_action.get(tuple(sorted(pressed_keys)), [0, 0])
-            if action[1] != 0:
+            action = keys_to_action.get(tuple(sorted(pressed_keys)), None)
+            if action != None:
                 full_action = [[0,0] for _ in range(env.player_count)]
                 full_action[player_in_turn - 1] = action
                 obs, rew, env_done, info = env.step(full_action)
