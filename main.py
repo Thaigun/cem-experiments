@@ -1,15 +1,12 @@
-import gym
 import os
 from multi_agent_play import play
 from griddly import GymWrapper, gd
-import numpy as np
 import random
 import empowerment_maximization
 from griddly_cem_agent import CEM, EmpConf
 import visualiser
 import configparser
 import json
-from collections import namedtuple
 
 def make_random_move(env, env_done, info):
     available_actions = env.game.get_available_actions(2)
@@ -100,12 +97,20 @@ if __name__ == '__main__':
         (ord('w'),): [action_names.index('move'), 2],
         (ord('d'),): [action_names.index('move'), 3],
         (ord('s'),): [action_names.index('move'), 4],
-        # No-op may be implemented later?
+        # Idle
         (ord('q'),): [0, 0],
         # Rest of the actions don't have a direction for now
         (ord('h'),): [action_names.index('heal'), 1],
         (ord(' '),): [action_names.index('attack'), 1],
         }
+
+    print('''
+    Use the following keys to control the agents:
+    a, w, d, s: Move
+    q: Idle
+    h: Heal
+    space: Attack
+    ''')
     
     empowerment_confs = {}
     for i, player_id in enumerate(conf_cem_players):
