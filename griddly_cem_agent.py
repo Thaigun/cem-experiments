@@ -204,7 +204,7 @@ class CEMEnv():
         return result
 
     #@lru_cache(maxsize=2000)
-    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False):
+    def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False, trust_correction_steps=None):
         '''
         Builds the distribution p(S_t+n|s_t, a_t^n)
         s_t is given by wrapped_env
@@ -218,6 +218,7 @@ class CEMEnv():
             current_step_player                 -> the player whose turn it is next, if this is the active player, then we use the action sequence. Otherwise, we build the distribution for all possible actions
             perceptor                           -> the agent until whose perception the distribution is built, after all actions have been taken
             return_obs                          -> if true, we don't return the end states but corresponding observations
+            trust_correction_steps              -> an array of boolean values, indicating which of the following steps should be trust_corrected
 
         Returns:
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
@@ -234,16 +235,29 @@ class CEMEnv():
         next_action_step = action_stepper + 1 if active_agent == current_step_agent else action_stepper
 
         pd_s_nstep = {}
-        
+        active_agent_team = next(team for team in self.teams if active_agent in team)
+
         # If we step forward with multiple actions, we assume uniform distribution of those actions.
         assumed_policy = 1 / len(curr_available_actions)
         for action in curr_available_actions:
             # From the pre-built mapping, get the probability distribution for the next step, given an action
             next_step_pd_s = self.calc_cpd_s_a(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
+            correct_for_trust = trust_correction_steps and trust_correction_steps[0]
+
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
                 next_step_agent = current_step_agent % self.player_count + 1
-                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, next_step_agent, perceptor, return_obs)
+                following_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
+                # If the follow-up state has zero empowerment for the active agent and the current state doesn't we skip the action
+                # Because we assume the player in the same team wouldn't reduce our empowerment to zero.
+                if correct_for_trust and current_step_agent in active_agent_team and next_state_prob > 0.01:
+                    follow_up_emp = self.calculate_state_empowerment(next_state, active_agent, active_agent, 1)
+                    if follow_up_emp == 0:
+                        current_state_emp = self.calculate_state_empowerment(wrapped_env, active_agent, active_agent, 1)
+                        if current_state_emp != 0:
+                            break
+            
+                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, active_agent, next_step_agent, perceptor, return_obs, following_trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
@@ -252,7 +266,8 @@ class CEMEnv():
         return pd_s_nstep
 
 
-    def calculate_state_empowerment(self, env, actuator, perceptor, n_step):
+    @lru_cache(maxsize=8000)
+    def calculate_state_empowerment(self, env, actuator, perceptor, n_step, trust_correction_steps=None):
         # All possible action combinations of length 'step'
         action_sequences = [tuple(combo) for combo in product(range(len(self.action_spaces[actuator-1])), repeat=n_step)]
         # A list of end state probabilities, for each action combination. A list of dictionaries.
@@ -267,7 +282,7 @@ class CEMEnv():
         return empowerment
 
 
-    def calculate_expected_empowerments(self, env, current_player, emp_pair, n_step):
+    def calculate_expected_empowerments(self, env, current_player, emp_pair, n_step, trust_correction_steps=None):
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actuator, perceptor).
         '''
