@@ -5,7 +5,7 @@ from griddly import GymWrapper, gd
 import numpy as np
 import random
 import empowerment_maximization
-from griddly_cem_agent import CEMEnv, EmpConf
+from griddly_cem_agent import CEM, EmpConf
 import visualiser
 import configparser
 import json
@@ -111,6 +111,6 @@ if __name__ == '__main__':
     for i, player_id in enumerate(conf_cem_players):
         empowerment_confs[player_id] = (EmpConf(conf_cem_players[player_id]['empowerment_pairs'], conf_cem_players[player_id]['empowerment_weights']))
 
-    cem = CEMEnv(env, empowerment_confs, teams, conf_agent_actions, [max_health for _ in conf_agent_actions])
+    cem = CEM(env, empowerment_confs, teams, conf_agent_actions, [max_health for _ in conf_agent_actions])
 
     play(env, fps=30, zoom=3, action_callback=maximise_cem, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)

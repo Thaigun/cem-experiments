@@ -1,7 +1,7 @@
 import os
 import cProfile
 from griddly import GymWrapperFactory, gd, GymWrapper
-from griddly_cem_agent import CEMEnv, find_player_pos
+from griddly_cem_agent import CEM, find_player_pos
 import numpy as np
 import matplotlib.pyplot as plt
 import random

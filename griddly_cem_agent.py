@@ -115,7 +115,7 @@ class GameEndState():
             return False
 
 
-class CEMEnv():
+class CEM():
     def __init__(self, env, empowerment_confs, teams, agent_actions=None, max_healths=False, seed=None, samples=1):
         self.empowerment_confs = empowerment_confs
         self.samples = samples
@@ -193,7 +193,7 @@ class CEMEnv():
                 result[next_env] = 0
             result[next_env] += 1.0 / self.samples
 
-        # Adjust fot health-performance consistency
+        # Adjust for health-performance consistency
         if self.max_healths and health_ratio < 1 - 1e-5:
             for following_env in result:
                 if following_env != env:
@@ -206,12 +206,13 @@ class CEMEnv():
     #@lru_cache(maxsize=2000)
     def build_distribution(self, wrapped_env, action_seq, action_stepper, active_agent, current_step_agent, perceptor, return_obs=False):
         '''
+        Recursive function
         Builds the distribution p(S_t+n|s_t, a_t^n)
         s_t is given by wrapped_env
         a_t^n is given by action_seq
         
         Params:
-            wrapped_env defines s_t             -> the original state
+            wrapped_env defines s_t             -> the original state, wrapped in a hasher
             action_seq defines a_t^n            -> the action sequence for THE PLAYER WE ARE INTERESTED IN
             action_stepper                      -> which action is next in turn in the action sequence
             active_agent                        -> player that we are interested in (for whom the action sequence applies to)
@@ -236,9 +237,9 @@ class CEMEnv():
         pd_s_nstep = {}
         
         # If we step forward with multiple actions, we assume uniform distribution of those actions.
-        assumed_policy = 1 / len(curr_available_actions)
+        assumed_policy = 1.0 / len(curr_available_actions)
         for action in curr_available_actions:
-            # From the pre-built mapping, get the probability distribution for the next step, given an action
+            # Get the probability distribution for the next step, given an action
             next_step_pd_s = self.calc_cpd_s_a(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():

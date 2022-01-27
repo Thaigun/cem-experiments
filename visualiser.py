@@ -1,6 +1,6 @@
 from unittest import skip
 import matplotlib.pyplot as plt
-from griddly_cem_agent import find_player_pos_vanilla, CEMEnv, EnvHashWrapper, EmpConf
+from griddly_cem_agent import find_player_pos_vanilla, CEM, EnvHashWrapper, EmpConf
 import numpy as np
 import random
 
@@ -96,7 +96,7 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     calculated_emps = [{} for _ in emp_pairs]
     emp_confs = EmpConf(emp_pairs, [1 for _ in emp_pairs])
     max_healths = [max_health for _ in agent_actions] if max_health else False
-    cem_env = CEMEnv(env, [emp_confs], teams, agent_actions, max_healths=max_healths, seed=1, samples=samples)
+    cem_env = CEM(env, [emp_confs], teams, agent_actions, max_healths=max_healths, seed=1, samples=samples)
     for _ in range(2000):
         plr_pos = find_player_pos_vanilla(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
