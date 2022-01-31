@@ -265,18 +265,18 @@ class CEM():
 
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
-                next_step_agent = current_step_agent % self.player_count + 1
-                following_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
                 # If the follow-up state has zero empowerment for the active agent and the current state doesn't we skip the action
                 # Because we assume the player in the same team wouldn't reduce our empowerment to zero.
                 if correct_for_trust and current_step_agent in active_agent_team and next_state_prob > 0.01:
                     follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
-                    if follow_up_emp == 0:
+                    if follow_up_emp < EPSILON:
                         current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
                         if current_state_emp != 0:
                             break
-            
-                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, following_trust_correction)
+                
+                next_step_agent = current_step_agent % self.player_count + 1
+                next_step_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
+                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, next_step_trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
@@ -285,6 +285,7 @@ class CEM():
                     pd_s_nstep[next_env] += adjusted_prob
                     total_prob += adjusted_prob
         
+        # Normalize the probabilities. Could not be 1, if we skip one because of trust correction, for instance.
         if total_prob > 0 and total_prob < 1 - EPSILON:
             for state in pd_s_nstep:
                 pd_s_nstep[state] /= total_prob
