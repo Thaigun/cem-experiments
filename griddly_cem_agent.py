@@ -121,12 +121,13 @@ class GameEndState():
 
 
 class CEM():
-    def __init__(self, env, empowerment_confs, teams, agent_actions=None, max_healths=None, seed=None, samples=1):
+    def __init__(self, env, empowerment_confs, teams, agent_actions=None, max_healths=None, seed=None, samples=1, policies=None):
         self.empowerment_confs = empowerment_confs
         self.samples = samples
         self.teams = teams
         self.max_healths = max_healths
         self.player_count = env.player_count
+        self.policies = policies
 
         # List all possible actions in the game
         self.action_spaces = [[] for _ in range(self.player_count)] 
@@ -254,11 +255,24 @@ class CEM():
         pd_s_nstep = {}
         active_agent_team = next(team for team in self.teams if actor in team)
 
-        # If we step forward with multiple actions, we assume uniform distribution of those actions.
-        assumed_policy = 1.0 / len(curr_available_actions)
+        # Find the policy of the agent in turn
+        if len(curr_available_actions) == 1:
+            # If there is only one action available, we can just take it
+            assumed_policy = { curr_available_actions[0]: 1.0 }
+        elif self.policies is None or current_step_agent not in self.policies:
+            # If no policy is given we assume uniform distribution of all actions
+            assumed_policy = {}
+            for action_idx in curr_available_actions:
+                assumed_policy[action_idx] = 1.0 / len(curr_available_actions)
+        else:
+            # If available, policy that defines a probability of each action
+            assumed_policy = self.policies[current_step_agent](curr_available_actions)
+
         # Sum up the total probability of all possible actions so we can normalize in the end if needed
         total_prob = 0
-        for action in curr_available_actions:
+        for action in assumed_policy:
+            if assumed_policy[action] == 0:
+                continue
             # Get the probability distribution for the next step, given an action
             next_step_pd_s = self.calc_pd_s_a(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
             correct_for_trust = trust_correction_steps and len(trust_correction_steps) > 0 and trust_correction_steps[0]
@@ -273,7 +287,7 @@ class CEM():
                         current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
                         if current_state_emp != 0:
                             break
-                
+
                 next_step_agent = current_step_agent % self.player_count + 1
                 next_step_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
                 child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, next_step_trust_correction)
@@ -281,7 +295,7 @@ class CEM():
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
                         pd_s_nstep[next_env] = 0
-                    adjusted_prob = child_distribution[next_env] * assumed_policy * next_state_prob
+                    adjusted_prob = child_distribution[next_env] * assumed_policy[action] * next_state_prob
                     pd_s_nstep[next_env] += adjusted_prob
                     total_prob += adjusted_prob
         
