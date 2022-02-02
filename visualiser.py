@@ -1,6 +1,5 @@
-from unittest import skip
 import matplotlib.pyplot as plt
-from griddly_cem_agent import find_player_pos_vanilla, CEM, EnvHashWrapper, EmpConf
+from griddly_cem_agent import find_player_pos_vanilla, CEM, EnvHashWrapper
 import numpy as np
 import random
 
@@ -48,7 +47,7 @@ def plot_empowerment_landscape(env, position_emps, title):
     plt.show()
 
 
-def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions, max_health, samples=1, trust_correction_steps=None):
+def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust_correction=False):
     def random_move_action(env, player_id):
         available_actions = env.game.get_available_actions(player_id)
         player_pos = list(available_actions)[0]
@@ -93,15 +92,14 @@ def build_landscape(orig_env, player_id, emp_pairs, teams, n_step, agent_actions
     player_rot = {'LEFT': 1, 'UP': 2, 'RIGHT': 3, 'DOWN': 4, 'NONE': 2}[player_rot_name]
     orientation_fix = orientation_fix_action(env, player_id, player_rot)
 
+    emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in agent_configs[player_id-1]['EmpowermentPairs']]
     calculated_emps = [{} for _ in emp_pairs]
-    emp_confs = EmpConf(emp_pairs, [1 for _ in emp_pairs])
-    max_healths = [max_health for _ in agent_actions] if max_health else False
-    cem_env = CEM(env, [emp_confs], teams, agent_actions, max_healths=max_healths, seed=1, samples=samples)
+    cem_env = CEM(env, agent_configs, samples=samples)
     for _ in range(2000):
         plr_pos = find_player_pos_vanilla(env, player_id)
         if tuple(plr_pos) not in calculated_emps[0]:
             for emp_pair_i, emp_pair in enumerate(emp_pairs):
-                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction_steps)
+                state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction=trust_correction)
                 calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
 
         # Find a random movement action that does not target a populated tile.

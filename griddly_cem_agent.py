@@ -44,7 +44,7 @@ def find_winner(env, info):
     if 'PlayerResults' in info:
         for plr, status in info['PlayerResults'].items():
             if status == 'Win':
-                return plr
+                return int(plr)
     return -1
 
 
@@ -94,8 +94,8 @@ class EnvHashWrapper():
 
 
 class GameEndState():
-    def __init__(self, winner_team):
-        self.winner = winner_team
+    def __init__(self, winner):
+        self.winner = int(winner)
 
     def __hash__(self) -> int:
         return self.winner
@@ -293,7 +293,7 @@ class CEM():
     @lru_cache(maxsize=8000)
     def calculate_state_empowerment(self, wrapped_env, actor, perceptor, n_step, trust_correction=False):
         # If the player isn't alive anymore, we assume the empowerment to be zero
-        if find_player_pos(wrapped_env, actor) is None:
+        if not isinstance(wrapped_env, GameEndState) and find_player_pos(wrapped_env, actor) is None:
             return 0
 
         # All possible action combinations of length 'step'

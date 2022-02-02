@@ -13,21 +13,20 @@ def maximise_cem(env, cem, player_in_turn):
 
 
 def visualise_landscape(env):
-    pass
-    # visualise_player = 2
-    # empowerment_maps = visualiser.build_landscape(env, visualise_player, conf_cem_players[visualise_player]['empowerment_pairs'], teams, n_step, conf_agent_actions, max_health)
-    # for i, emp_map in enumerate(empowerment_maps):
-    #     visualiser.emp_map_to_str(emp_map)
-    #     visualiser.plot_empowerment_landscape(env, emp_map, 'Empowerment: ' + str(conf_cem_players[visualise_player]['empowerment_pairs'][i]))
-    # cem_map = {}
-    # for pos in empowerment_maps[0]:
-    #     # In addition, print the CEM map that all different heatmaps weighted and summed
-    #     cem_sum = 0
-    #     for emp_pair_i, map in enumerate(empowerment_maps):
-    #         cem_sum += map[pos] * conf_cem_players[visualise_player]['empowerment_weights'][emp_pair_i]
-    #     cem_map[pos] = cem_sum
-    # visualiser.emp_map_to_str(cem_map)
-    # visualiser.plot_empowerment_landscape(env, cem_map, 'CEM heatmap')
+    visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == maximise_cem)
+    empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, conf_obj['NStep'])
+    for i, emp_map in enumerate(empowerment_maps):
+        visualiser.emp_map_to_str(emp_map)
+        visualiser.plot_empowerment_landscape(env, emp_map, 'Empowerment: ' + str(agents_confs[visualise_player-1]['EmpowermentPairs'][i]))
+    cem_map = {}
+    for pos in empowerment_maps[0]:
+        # In addition, print the CEM map that all different heatmaps weighted and summed
+        cem_sum = 0
+        for emp_pair_i, map in enumerate(empowerment_maps):
+            cem_sum += map[pos] * agents_confs[visualise_player-1]['EmpowermentPairs'][emp_pair_i]['Weight']
+        cem_map[pos] = cem_sum
+    visualiser.emp_map_to_str(cem_map)
+    visualiser.plot_empowerment_landscape(env, cem_map, 'CEM heatmap')
 
 
 if __name__ == '__main__':

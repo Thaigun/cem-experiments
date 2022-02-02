@@ -1,7 +1,7 @@
 threeway:
   GriddlyDescription: "testbed1.yaml"
   NStep: 1
-  Agents:
+  Agents: # The code assumes that the agents are ordered by their id here, starting from PlayerId 1
     - PlayerId: 1
       MaxHealth: 2
       Policy: "KBM" # Special name meaning keyboard and mouse (human player)
