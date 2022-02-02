@@ -1,0 +1,43 @@
+threeway:
+  GriddlyDescription: "testbed1.yaml"
+  NStep: 1
+  Agents:
+    - PlayerId: 1
+      MaxHealth: 2
+      Policy: "KBM" # Special name meaning keyboard and mouse (human player)
+      AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
+      Actions:
+        - "idle"
+        - "move"
+        - "heal"
+    - PlayerId: 2
+      MaxHealth: 2
+      Policy: "CEM" # Special name meaning it uses the CEM algorithm
+      AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 0.3
+        - Actor: 2
+          Perceptor: 1
+          Weight: 0.2
+        - Actor: 1
+          Perceptor: 1
+          Weight: 0.9
+      Actions:
+        - "idle"
+        - "move"
+        - "heal"
+        - "attack"
+      Trust:
+        - PlayerId: 1
+          Anticipation: true # Whether to apply trust correction in the anticipation step
+          Steps: [] # Steps (after anticipation) where trust correction is applied
+    - PlayerId: 3
+      MaxHealth: 2
+      Policy: "stupid_move_policy" # Finds the function with this name from policies.py
+      AssumedPolicy: "stupid_move_policy" # How other (CEM) agents assume this agent to behave
+      Actions:
+        - "idle"
+        - "move"
+        - "attack"

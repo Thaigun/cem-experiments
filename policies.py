@@ -1,9 +1,9 @@
-def uniform_policy(action_space):
-    policy = {}
-    for action_idx in range(len(action_space)):
-        policy[action_idx] = 1.0 / len(action_space)
-    return policy
+def uniform_policy(env, cem, player_id):
+    action_probs = {}
+    for action in cem.action_spaces[player_id-1]:
+        action_probs[action] = 1.0 / len(cem.action_spaces[player_id-1])
+    return action_probs
 
 
-def stupid_move_policy(action_space):
-    return {2: 1.0}
+def stupid_move_policy(env, cem, player_id):
+    return {(1,2): 1.0}

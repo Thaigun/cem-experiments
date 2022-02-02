@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.9
   - matplotlib
+  - pyyaml
   - pip
   - pip:
     - griddly

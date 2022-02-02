@@ -6,7 +6,6 @@ import random
 from collections import namedtuple
 
 
-EmpConf = namedtuple('EmpConf', ['empowerment_pairs', 'empowerment_weights'])
 EPSILON = 1e-5
 
 
@@ -39,25 +38,13 @@ def find_alive_players(env):
     return [player_id for player_id in range(1, env.player_count + 1) if env.get_available_actions(player_id)]
 
 
-# Returns the index of the winning team (as it stands in self.teams) or -1 if no winner.
-# Winning team is where one of the members satisfy Griddly's winning condition
-# or if every other team is eliminated.
-def find_winner(env, info, teams):
+# Returns the player_id of the player who has won.
+# TODO: What to return if the game has ended but there is no winner?
+def find_winner(env, info):
     if 'PlayerResults' in info:
         for plr, status in info['PlayerResults'].items():
             if status == 'Win':
-                return next(team_i for team_i, team in enumerate(teams) if int(plr) in team)
-    teams_alive = []
-    alive_players = find_alive_players(env)
-    for team_i, team in enumerate(teams):
-        for player_id in team:
-            if player_id in alive_players:
-                teams_alive.append(team_i)
-                if len(teams_alive) > 1:
-                    return -1
-                break
-    if len(teams_alive) == 1:
-        return teams_alive[0]
+                return plr
     return -1
 
 
@@ -121,22 +108,20 @@ class GameEndState():
 
 
 class CEM():
-    def __init__(self, env, empowerment_confs, teams, agent_actions=None, max_healths=None, seed=None, samples=1, policies=None):
-        self.empowerment_confs = empowerment_confs
+    def __init__(self, env, agent_confs, seed=None, samples=1):
         self.samples = samples
-        self.teams = teams
-        self.max_healths = max_healths
         self.player_count = env.player_count
-        self.policies = policies
+        self.agent_confs = agent_confs
 
         # List all possible actions in the game
         self.action_spaces = [[] for _ in range(self.player_count)] 
         # Include the idling action
         for player_i in range(self.player_count):
-            if agent_actions is None or 'idle' in agent_actions[player_i]:
+            player_i_actions = self.agent_confs[player_i-1]['Actions']
+            if 'idle' in player_i_actions:
                 self.action_spaces[player_i].append((0,0))
             for action_type_index, action_name in enumerate(env.action_names):
-                if agent_actions is None or action_name in agent_actions[player_i]:
+                if action_name in player_i_actions:
                     for action_id in range(1, env.num_action_ids[action_name]):
                         self.action_spaces[player_i].append((action_type_index, action_id))
         # Will contain the mapping from state hashes to states
@@ -153,25 +138,25 @@ class CEM():
         #                     |---pair 0----|  |----pair 1---|  |---pair 2----|
         expected_empowerments_per_pair = []
 
-        for emp_pair in self.empowerment_confs[player_id].empowerment_pairs:
-            expected_empowerments = self.calculate_expected_empowerments(env, player_id, emp_pair, n_step)
+        for emp_pair in self.agent_confs[player_id-1]['EmpowermentPairs']:
+            expected_empowerments = self.calculate_expected_empowerments(env, player_id, (emp_pair['Actor'], emp_pair['Perceptor']), n_step, True)
             expected_empowerments_per_pair.append(expected_empowerments)
 
         best_actions = []
         best_rewards = []
         # Find the action index that yields the highest expected empowerment
-        for a in range(len(self.action_spaces[player_id-1])):
-            policy_reward = 0
-            for e in range(len(self.empowerment_confs[player_id].empowerment_pairs)):
-                policy_reward += self.empowerment_confs[player_id].empowerment_weights[e] * expected_empowerments_per_pair[e][a]
-            if not len(best_rewards) or policy_reward >= max(best_rewards) + EPSILON:
-                best_rewards = [policy_reward]
+        for a in self.action_spaces[player_id-1]:
+            action_reward = 0
+            for emp_pair_i, agent_emp_conf in enumerate(self.agent_confs[player_id-1]['EmpowermentPairs']):
+                action_reward += agent_emp_conf['Weight'] * expected_empowerments_per_pair[emp_pair_i][a]
+            if not len(best_rewards) or action_reward >= max(best_rewards) + EPSILON:
+                best_rewards = [action_reward]
                 best_actions = [a]
-            elif policy_reward > max(best_rewards) - EPSILON and policy_reward < max(best_rewards) + EPSILON:
-                best_rewards.append(policy_reward)
+            elif action_reward > max(best_rewards) - EPSILON and action_reward < max(best_rewards) + EPSILON:
+                best_rewards.append(action_reward)
                 best_actions.append(a)
         
-        return self.action_spaces[player_id-1][random.choice(best_actions)]
+        return random.choice(best_actions)
 
 
     # Builds the action that can be passed to the Griddly environment
@@ -184,7 +169,7 @@ class CEM():
     @lru_cache(maxsize=5000)
     def calc_pd_s_a(self, env, player_id, action):
         # Build it lazily
-        health_ratio = find_player_health(env.get_state(), player_id) / self.max_healths[player_id-1] if self.max_healths else 1
+        health_ratio = find_player_health(env.get_state(), player_id) / self.agent_confs[player_id-1]['MaxHealth']
         # if the player is dead, the empowerment is 0
         if health_ratio == 0:
             return {env: 1.0}
@@ -193,9 +178,8 @@ class CEM():
         for _ in range(self.samples):
             clone_env, obs, rew, env_done, info = env.step(self.build_action(action, player_id))
             if (env_done):
-                game_winner = find_winner(clone_env, info, self.teams)
-                if game_winner != -1:
-                    next_env = GameEndState(game_winner)
+                game_winner = find_winner(clone_env, info)
+                next_env = GameEndState(game_winner)
             else:
                 next_env = clone_env
             if next_env not in result:
@@ -203,7 +187,7 @@ class CEM():
             result[next_env] += 1.0 / self.samples
 
         # Adjust for health-performance consistency
-        if self.max_healths and health_ratio < 1 - EPSILON:
+        if health_ratio < 1 - EPSILON:
             self.health_perf_consistency(env, health_ratio, result)
         return result
 
@@ -217,11 +201,18 @@ class CEM():
         if env not in transitions:
             transitions[env] = 0
         # Probability of staying still is its original probability and "leftovers" of the other states.
+        # TODO: Verify this is correct
         transitions[env] = 1 - health_ratio + health_ratio * transitions[env]
 
 
+    def find_assumed_policy(self, agent_id, wrapped_env):
+        current_agent_conf = self.agent_confs[agent_id-1]
+        # Find the policy of the agent in turn
+        return current_agent_conf['AssumedPolicy'](wrapped_env._env , self, agent_id)
+
+
     #@lru_cache(maxsize=2000)
-    def build_distribution(self, wrapped_env, action_seq, action_stepper, actor, current_step_agent, perceptor, return_obs=False, trust_correction_steps=None):
+    def build_distribution(self, wrapped_env, action_seq, action_stepper, actor, current_step_agent, perceptor, return_obs=False, anticipation=False, trust_correction=False):
         '''
         Recursive function
         Builds the distribution p(S_t+n|s_t, a_t^n)
@@ -236,7 +227,8 @@ class CEM():
             current_step_player                 -> the player whose turn it is next, if this is the active player, then we use the action sequence. Otherwise, we build the distribution for all possible actions
             perceptor                           -> the agent until whose perception the distribution is built, after all actions have been taken
             return_obs                          -> if true, we don't return the end states but corresponding observations
-            trust_correction_steps              -> an array of boolean values, indicating which of the following steps should be trust_corrected
+            anticipation                        -> boolean value indicating whether this is an anticipation step or not
+            trust_correction                    -> boolean value indicating whether we should correct for trust
 
         Returns:
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
@@ -247,50 +239,42 @@ class CEM():
             # if return_obs is True, then we return the observation instead of the state
             return {self.env_to_hashed_obs(wrapped_env, actor, perceptor): 1.0} if return_obs else {wrapped_env: 1.0}
         
-        # If this step is for the agent whose empowerment is being calculated, take the next action from the actions list. Otherwise, we use all possible actions 0 ... len(action_space-1)
-        curr_available_actions = [action_seq[action_stepper]] if actor == current_step_agent else range(len(self.action_spaces[current_step_agent-1]))
         # Also, increase the action stepper if this agent was the active one.
         next_action_step = action_stepper + 1 if actor == current_step_agent else action_stepper
 
+        actor_conf = self.agent_confs[actor-1]
         pd_s_nstep = {}
-        active_agent_team = next(team for team in self.teams if actor in team)
-
-        # Find the policy of the agent in turn
-        if len(curr_available_actions) == 1:
-            # If there is only one action available, we can just take it
-            assumed_policy = { curr_available_actions[0]: 1.0 }
-        elif self.policies is None or current_step_agent not in self.policies:
-            # If no policy is given we assume uniform distribution of all actions
-            assumed_policy = {}
-            for action_idx in curr_available_actions:
-                assumed_policy[action_idx] = 1.0 / len(curr_available_actions)
-        else:
-            # If available, policy that defines a probability of each action
-            assumed_policy = self.policies[current_step_agent](curr_available_actions)
+        
+        # Find the probability of each acttion for the current agent
+        assumed_policy = self.find_assumed_policy(current_step_agent, wrapped_env) if actor != current_step_agent else {self.action_spaces[current_step_agent-1][action_seq[action_stepper]]: 1.0}
 
         # Sum up the total probability of all possible actions so we can normalize in the end if needed
         total_prob = 0
+        # TODO: Should this be the action index or actual action?
         for action in assumed_policy:
             if assumed_policy[action] == 0:
                 continue
             # Get the probability distribution for the next step, given an action
-            next_step_pd_s = self.calc_pd_s_a(wrapped_env, current_step_agent, self.action_spaces[current_step_agent-1][action])
-            correct_for_trust = trust_correction_steps and len(trust_correction_steps) > 0 and trust_correction_steps[0]
+            next_step_pd_s = self.calc_pd_s_a(wrapped_env, current_step_agent, action)
 
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
-                # If the follow-up state has zero empowerment for the active agent and the current state doesn't we skip the action
-                # Because we assume the player in the same team wouldn't reduce our empowerment to zero.
-                if correct_for_trust and current_step_agent in active_agent_team and next_state_prob > 0.01:
-                    follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
-                    if follow_up_emp < EPSILON:
-                        current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
-                        if current_state_emp != 0:
-                            break
+                # If the actor trusts the current agent, we skip all actions that would reduce the actor's empowerment to zero
+                # TODO: It feels like the potential trust correction step could be separated into a separate function
+                if trust_correction and 'Trust' in actor_conf and next_state_prob > 0.01:
+                    # Find the trust setting for the current agent
+                    trust_current = [trust_conf for trust_conf in actor_conf['Trust'] if trust_conf['PlayerId'] == current_step_agent]
+                    if len(trust_current) == 1:
+                        # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
+                        if (trust_current[0]['Anticipation'] and anticipation) or action_stepper in trust_current[0]['Steps']:
+                            follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
+                            if follow_up_emp < EPSILON:
+                                current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
+                                if current_state_emp != 0:
+                                    break
 
                 next_step_agent = current_step_agent % self.player_count + 1
-                next_step_trust_correction = trust_correction_steps[1:] if trust_correction_steps else trust_correction_steps
-                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, next_step_trust_correction)
+                child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
                     if next_env not in pd_s_nstep:
@@ -307,7 +291,7 @@ class CEM():
 
 
     @lru_cache(maxsize=8000)
-    def calculate_state_empowerment(self, wrapped_env, actor, perceptor, n_step, trust_correction_steps=None):
+    def calculate_state_empowerment(self, wrapped_env, actor, perceptor, n_step, trust_correction=False):
         # If the player isn't alive anymore, we assume the empowerment to be zero
         if find_player_pos(wrapped_env, actor) is None:
             return 0
@@ -317,8 +301,8 @@ class CEM():
         # A list of end state probabilities, for each action combination. A list of dictionaries.
         cpd_S_A_nstep = [None] * len(action_sequences)
         for seq_idx, action_seq in enumerate(action_sequences):
-            cpd_S_A_nstep[seq_idx] = self.build_distribution(wrapped_env, action_seq, 0, actor, actor, perceptor, True, trust_correction_steps)
-            
+            cpd_S_A_nstep[seq_idx] = self.build_distribution(wrapped_env, action_seq, 0, actor, actor, perceptor, return_obs=True, trust_correction=trust_correction)
+
         # Use the Blahut-Arimoto algorithm to calculate the optimal probability distribution
         pd_a_opt = empowerment_maximization.blahut_arimoto(cpd_S_A_nstep, self.rng)
         # Use the optimal distribution to calculate the mutual information (empowerement)
@@ -326,17 +310,17 @@ class CEM():
         return empowerment
 
 
-    def calculate_expected_empowerments(self, gym_env, current_player, emp_pair, n_step, trust_correction_steps=None):
+    def calculate_expected_empowerments(self, gym_env, current_player, emp_pair, n_step, trust_correction):
         '''
         Calculates the expected empowerment for each action that can be taken from the current state, for one empowerment pair (actor, perceptor).
         '''
         # Find the probability of follow-up states for when the actor is in turn. p(s|s_t, a_t), s = state when actor is in turn
-        cpd_s_a_anticipation = [None] * len(self.action_spaces[current_player-1])
+        cpd_s_a_anticipation = {}
         for action_idx, action in enumerate(self.action_spaces[current_player-1]):
-            cpd_s_a_anticipation[action_idx] = self.build_distribution(EnvHashWrapper(gym_env.clone()), (action_idx,), 0, current_player, current_player, emp_pair[0], trust_correction_steps=trust_correction_steps)
+            cpd_s_a_anticipation[action] = self.build_distribution(EnvHashWrapper(gym_env.clone()), (action_idx,), 0, current_player, current_player, emp_pair[0], return_obs=False, anticipation=True, trust_correction=trust_correction)
         # Make a flat list of all the reachable states
         reachable_states = set()
-        for cpd_s in cpd_s_a_anticipation:
+        for cpd_s in cpd_s_a_anticipation.values():
             for future_state in cpd_s:
                 reachable_states.add(future_state)
         # Save the expected empowerment for each anticipated state
@@ -346,9 +330,11 @@ class CEM():
             empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1], n_step)
             reachable_state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
-        expected_empowerments = np.zeros(len(self.action_spaces[current_player-1]))
-        for a in range(0, len(self.action_spaces[current_player-1])):
+        expected_empowerments = {}
+        for a in self.action_spaces[current_player-1]:
             for state, state_probability in cpd_s_a_anticipation[a].items():
+                if not a in expected_empowerments:
+                    expected_empowerments[a] = 0
                 expected_empowerments[a] += state_probability * reachable_state_empowerments[state]
         
         return expected_empowerments
@@ -357,7 +343,7 @@ class CEM():
     def env_to_hashed_obs(self, wrapped_env, actor, perceptor):
         if isinstance(wrapped_env, GameEndState):
             # If the actor is in the winning team, all their actions lead to maximum empowerment
-            if actor in self.teams[wrapped_env.winner]:
+            if actor == wrapped_env.winner:
                 hashed_obs = self.rng.integers(100, 4000000000)
             # But if the actor loses futura actions lead to a minimum empowerment
             else:
