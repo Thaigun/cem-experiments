@@ -2,7 +2,6 @@ from griddly import gd, GymWrapper
 import cProfile
 import os
 
-from numpy import full
 from griddly_cem_agent import CEM
 import conf_parser
 
