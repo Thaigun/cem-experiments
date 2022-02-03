@@ -31,6 +31,9 @@ def find_player_health(env_state, player_id):
     player_variables = [o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id]
     if not player_variables:
         return 0
+    # If health is not an object variable, return None
+    if 'health' not in player_variables[0]:
+        return None
     return player_variables[0]['health']
 
 
@@ -169,7 +172,11 @@ class CEM():
     @lru_cache(maxsize=5000)
     def calc_pd_s_a(self, env, player_id, action):
         # Build it lazily
-        health_ratio = find_player_health(env.get_state(), player_id) / self.agent_confs[player_id-1]['MaxHealth']
+        player_health = find_player_health(env.get_state(), player_id)
+        if player_health is not None:
+            health_ratio = player_health / self.agent_confs[player_id-1]['MaxHealth']
+        else:
+            health_ratio = 1.0
         # if the player is dead, the empowerment is 0
         if health_ratio == 0:
             return {env: 1.0}

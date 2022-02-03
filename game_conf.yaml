@@ -54,3 +54,49 @@ trust:
         - PlayerId: 1
           Anticipation: false
           Steps: [0]
+
+fight:
+  GriddlyDescription: "testbed3.yaml"
+  NStep: 2
+  Agents:
+    - PlayerId: 1
+      MaxHealth: 2
+      Policy: "KBM"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move", "heal", "attack"]
+    - PlayerId: 2
+      MaxHealth: 2
+      Policy: "maximise_cem_policy"
+      AssumedPolicy: "uniform_policy"
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 0.8
+        - Actor: 2
+          Perceptor: 1
+          Weight: 0.2
+        - Actor: 1
+          Perceptor: 1
+          Weight: -1.0
+
+pacifist:
+  GriddlyDescription: "testbed2.yaml"
+  NStep: 1
+  Agents:
+    - PlayerId: 1
+      MaxHealth: 2
+      Policy: "uniform_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["move", "idle"]
+    - PlayerId: 2
+      MaxHealth: 2
+      Policy: "maximise_cem_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["move", "idle"]
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 1.0
+        - Actor: 2
+          Perceptor: 1
+          Weight: 1.0

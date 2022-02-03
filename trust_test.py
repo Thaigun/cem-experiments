@@ -13,9 +13,8 @@ if __name__ == '__main__':
                      level=0)
 
     player_id = 2
-    emp_pairs = [(2,2)]
-
     conf_parser.activate_config("trust")
+    emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in conf_parser.active_config['Agents'][player_id-1]['EmpowermentPairs']]
     
     for nstep in range(1, 2):
         print('nstep: ', nstep)
