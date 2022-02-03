@@ -42,7 +42,6 @@ def find_alive_players(wrapped_env):
 
 
 # Returns the player_id of the player who has won.
-# TODO: What to return if the game has ended but there is no winner?
 def find_winner(env, info):
     if 'PlayerResults' in info:
         for plr, status in info['PlayerResults'].items():
@@ -208,7 +207,6 @@ class CEM():
         if env not in transitions:
             transitions[env] = 0
         # Probability of staying still is its original probability and "leftovers" of the other states.
-        # TODO: Verify this is correct
         transitions[env] = 1 - health_ratio + health_ratio * transitions[env]
 
 
@@ -261,7 +259,6 @@ class CEM():
 
         # Sum up the total probability of all possible actions so we can normalize in the end if needed
         total_prob = 0
-        # TODO: Should this be the action index or actual action?
         for action in assumed_policy:
             if assumed_policy[action] == 0:
                 continue
@@ -271,13 +268,11 @@ class CEM():
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
                 # If the actor trusts the current agent, we skip all actions that would reduce the actor's empowerment to zero
-                # TODO: It feels like the potential trust correction step could be separated into a separate function
                 if trust_correction and 'Trust' in actor_conf and next_state_prob > 0.01:
                     # Find the trust setting for the current agent
                     trust_current = [trust_conf for trust_conf in actor_conf['Trust'] if trust_conf['PlayerId'] == current_step_agent]
                     if len(trust_current) == 1:
                         # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
-                        # TODO: Check that the trust steps config makes sense.
                         if (trust_current[0]['Anticipation'] and anticipation) or action_stepper in trust_current[0]['Steps']:
                             follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
                             if follow_up_emp < EPSILON:
@@ -338,7 +333,7 @@ class CEM():
         reachable_state_empowerments = {}
         # Calculate the n-step empowerment for each state that was found earlier
         for state in reachable_states:
-            empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1], n_step)
+            empowerment = self.calculate_state_empowerment(state, emp_pair[0], emp_pair[1], n_step, trust_correction=trust_correction)
             reachable_state_empowerments[state] = empowerment
         # Calculate the expected empowerment for each action that can be taken from the current state
         expected_empowerments = {}

@@ -25,7 +25,7 @@ threeway:
       Trust:
         - PlayerId: 1
           Anticipation: true # Whether to apply trust correction in the anticipation step
-          Steps: [] # Steps (after anticipation) where trust correction is applied
+          Steps: [] # Steps (after anticipation) where trust correction is applied. NOTE: Starts from 1!
     - PlayerId: 3
       MaxHealth: 2
       Policy: "stupid_move_policy" # Finds the function with this name from policies.py
@@ -53,7 +53,7 @@ trust:
       Trust:
         - PlayerId: 1
           Anticipation: false
-          Steps: [0]
+          Steps: [1]
 
 fight:
   GriddlyDescription: "testbed3.yaml"
