@@ -34,8 +34,8 @@ def find_player_health(env_state, player_id):
     return player_variables[0]['health']
 
 
-def find_alive_players(env):
-    return [player_id for player_id in range(1, env.player_count + 1) if env.get_available_actions(player_id)]
+def find_alive_players(wrapped_env):
+    return [player_id for player_id in range(1, wrapped_env.player_count + 1) if wrapped_env.get_available_actions(player_id)]
 
 
 # Returns the player_id of the player who has won.
@@ -117,7 +117,7 @@ class CEM():
         self.action_spaces = [[] for _ in range(self.player_count)] 
         # Include the idling action
         for player_i in range(self.player_count):
-            player_i_actions = self.agent_confs[player_i-1]['Actions']
+            player_i_actions = self.agent_confs[player_i]['Actions']
             if 'idle' in player_i_actions:
                 self.action_spaces[player_i].append((0,0))
             for action_type_index, action_name in enumerate(env.action_names):
@@ -233,14 +233,18 @@ class CEM():
         Returns:
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
         '''
-        # If this is the last step, just return this state and probability 1.0
-        # or if this is one of the terminated states, return a mapping where each following active agent action leads to a different outcome
+        # If this is the last step, end the recursion
         if (action_stepper == len(action_seq) and current_step_agent == perceptor) or isinstance(wrapped_env, GameEndState):
             # if return_obs is True, then we return the observation instead of the state
             return {self.env_to_hashed_obs(wrapped_env, actor, perceptor): 1.0} if return_obs else {wrapped_env: 1.0}
-        
+
+        next_step_agent = current_step_agent % self.player_count + 1
         # Also, increase the action stepper if this agent was the active one.
         next_action_step = action_stepper + 1 if actor == current_step_agent else action_stepper
+        
+        # If the current agent is not alive, go straight to the next agent
+        if not current_step_agent in find_alive_players(wrapped_env):
+            return self.build_distribution(wrapped_env, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)
 
         actor_conf = self.agent_confs[actor-1]
         pd_s_nstep = {}
@@ -266,6 +270,7 @@ class CEM():
                     trust_current = [trust_conf for trust_conf in actor_conf['Trust'] if trust_conf['PlayerId'] == current_step_agent]
                     if len(trust_current) == 1:
                         # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
+                        # TODO: Check that the trust steps config makes sense.
                         if (trust_current[0]['Anticipation'] and anticipation) or action_stepper in trust_current[0]['Steps']:
                             follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
                             if follow_up_emp < EPSILON:
@@ -273,7 +278,6 @@ class CEM():
                                 if current_state_emp != 0:
                                     break
 
-                next_step_agent = current_step_agent % self.player_count + 1
                 child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
