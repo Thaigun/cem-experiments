@@ -6,7 +6,7 @@ Environment:
   Observers:
     Sprite2D:
       TileSize: 24
-      BackgroundTile: oryx/oryx_fantasy/floor9-3.png
+      BackgroundTile: Floor.png
     Vector:
       IncludePlayerId: true
       IncludeRotation: true
@@ -153,22 +153,40 @@ Actions:
                 Commands:
                   - incr: health
 
+  - Name: choose_icon
+    InputMapping:
+      Internal: true
+      Inputs:
+        1:
+          VectorToDest: [0, 0]
+    Behaviours:
+      - Src:
+          Object: plr
+          Commands:
+            - set_tile: src._playerId
+        Dst:
+          Object: plr
+
 # Objects of the world
 Objects:
   - Name: wall
     MapCharacter: w
     Observers:
       Sprite2D:
-        - Image: oryx/oryx_fantasy/wall9-3.png
+        - Image: Wall.png
   - Name: plr
     MapCharacter: P
     Variables:
       - Name: health
         InitialValue: 2
+    InitialActions:
+      - Action: choose_icon
     Observers:
       Sprite2D:
-        - Image: oryx/oryx_fantasy/avatars/genie1.png
-        - Image: oryx/oryx_fantasy/avatars/priest1.png        
+        - Image: Player.png
+        - Image: Player.png
+        - Image: Companion.png
+        - Image: Enemy.png
   - Name: projectile
     MapCharacter: x
     InitialActions:
@@ -178,4 +196,4 @@ Objects:
         InitialValue: 3
     Observers:
       Sprite2D:
-        - Image: oryx/oryx_fantasy/fire-1.png
+        - Image: Projectile.png
