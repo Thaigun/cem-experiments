@@ -12,7 +12,7 @@ threeway:
         - "heal"
     - PlayerId: 2
       MaxHealth: 2
-      Policy: "CEM" # Special name meaning it uses the CEM algorithm
+      Policy: "maximise_cem_policy"
       AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
       EmpowermentPairs:
         - Actor: 2

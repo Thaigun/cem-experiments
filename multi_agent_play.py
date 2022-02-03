@@ -10,7 +10,7 @@ def display_arr(screen, arr, video_size, transpose):
     screen.blit(pyg_img, (0, 0))
 
 
-def play(env, agent_policies, cem, transpose=True, fps=30, zoom=None, keys_to_action=None, visualiser_callback=None):
+def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_action=None, visualiser_callback=None):
     """Allows one to play the game using keyboard.
 
     Arguments
@@ -74,6 +74,10 @@ def play(env, agent_policies, cem, transpose=True, fps=30, zoom=None, keys_to_ac
     screen = pygame.display.set_mode(video_size)
     clock = pygame.time.Clock()
 
+    agent_policies = {}
+    for agent_conf in agents_confs:
+        agent_policies[agent_conf['PlayerId']] = agent_conf['Policy']
+
     player_in_turn = 1
 
     while running:
@@ -108,7 +112,7 @@ def play(env, agent_policies, cem, transpose=True, fps=30, zoom=None, keys_to_ac
                     elif event.key == 27:
                         running = False
                     elif visualiser_callback is not None and event.key == ord('p'):
-                        visualiser_callback(env)
+                        visualiser_callback(env, agents_confs)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
                         pressed_keys.remove(event.key)

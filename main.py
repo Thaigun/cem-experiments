@@ -3,17 +3,12 @@ from multi_agent_play import play
 from griddly import GymWrapper, gd
 from griddly_cem_agent import CEM
 import visualiser
-import yaml
 import policies
+import conf_parser
 
 
-def maximise_cem(env, cem, player_in_turn):
-    action = cem.cem_action(env, player_in_turn, conf_obj['NStep'])
-    return { tuple(action): 1.0 }
-
-
-def visualise_landscape(env):
-    visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == maximise_cem)
+def visualise_landscape(env, agents_confs):
+    visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == policies.maximise_cem_policy)
     empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, conf_obj['NStep'])
     for i, emp_map in enumerate(empowerment_maps):
         visualiser.emp_map_to_str(emp_map)
@@ -31,9 +26,8 @@ def visualise_landscape(env):
 
 if __name__ == '__main__':
     USE_CONF = "threeway"
-    conf_obj = None
-    with open('game_conf.yaml', 'r') as f:
-        conf_obj = yaml.safe_load(f)[USE_CONF]
+    conf_parser.activate_config(USE_CONF)
+    conf_obj = conf_parser.active_config
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
@@ -65,22 +59,6 @@ if __name__ == '__main__':
     space: Attack
     ''')
     
-    agents_confs = conf_obj.get('Agents')
-    # Replace the policy values with functions of the same name
-    for agent_conf in agents_confs:
-        agent_conf['AssumedPolicy'] = getattr(policies, agent_conf['AssumedPolicy'])
-        # Agents that use the CEM policy or are controlled by a human player are special cases
-        if agent_conf['Policy'] == 'CEM':
-            agent_conf['Policy'] = maximise_cem
-        elif agent_conf['Policy'] == 'KBM':
-            pass
-        else:
-            agent_conf['Policy'] = getattr(policies, agent_conf['Policy'])
+    cem = CEM(env, conf_obj['Agents'])
 
-    cem = CEM(env, agents_confs)
-
-    agent_policies = {}
-    for agent_conf in agents_confs:
-        agent_policies[agent_conf['PlayerId']] = agent_conf['Policy']
-
-    play(env, agent_policies=agent_policies, cem=cem, fps=30, zoom=3, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)
+    play(env, agents_confs=conf_obj['Agents'], cem=cem, fps=30, zoom=3, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)
