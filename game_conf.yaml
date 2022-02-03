@@ -6,10 +6,7 @@ threeway:
       MaxHealth: 2
       Policy: "KBM" # Special name meaning keyboard and mouse (human player)
       AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
-      Actions:
-        - "idle"
-        - "move"
-        - "heal"
+      Actions: ["idle", "move", "heal"]
     - PlayerId: 2
       MaxHealth: 2
       Policy: "maximise_cem_policy"
@@ -24,11 +21,7 @@ threeway:
         - Actor: 1
           Perceptor: 1
           Weight: 0.9
-      Actions:
-        - "idle"
-        - "move"
-        - "heal"
-        - "attack"
+      Actions: ["idle", "move", "heal", "attack"]
       Trust:
         - PlayerId: 1
           Anticipation: true # Whether to apply trust correction in the anticipation step
@@ -37,7 +30,27 @@ threeway:
       MaxHealth: 2
       Policy: "stupid_move_policy" # Finds the function with this name from policies.py
       AssumedPolicy: "stupid_move_policy" # How other (CEM) agents assume this agent to behave
-      Actions:
-        - "idle"
-        - "move"
-        - "attack"
+      Actions: ["idle", "move", "heal"]
+
+trust:
+  GriddlyDescription: "testbed_trust.yaml"
+  NStep: 2
+  Agents:
+    - PlayerId: 1
+      MaxHealth: 1
+      Policy: "uniform_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move", "attack"]
+    - PlayerId: 2
+      MaxHealth: 1
+      Policy: "maximise_cem_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move"]
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 1.0
+      Trust:
+        - PlayerId: 1
+          Anticipation: false
+          Steps: [0]
