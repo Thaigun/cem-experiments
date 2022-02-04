@@ -38,6 +38,7 @@ if __name__ == '__main__':
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
                      player_observer_type=gd.ObserverType.VECTOR,
                      global_observer_type=gd.ObserverType.SPRITE_2D,
+                     image_path='./art',
                      level=0)
 
     env.reset()
