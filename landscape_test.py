@@ -1,11 +1,11 @@
 import os
 from griddly import GymWrapperFactory, gd, GymWrapper
 from visualiser import plot_empowerment_landscape, build_landscape
-import conf_parser
+import configuration
 
 if __name__ == '__main__':
-    conf_parser.activate_config("pacifist")
-    conf_obj = conf_parser.active_config
+    configuration.activate_config("pacifist")
+    conf_obj = configuration.active_config
 
     wrapper = GymWrapperFactory()
     name = 'projectiles_env'

@@ -1,4 +1,4 @@
-import conf_parser
+import configuration
 
 def uniform_policy(env, cem, player_id):
     action_probs = {}
@@ -12,5 +12,5 @@ def stupid_move_policy(env, cem, player_id):
 
 
 def maximise_cem_policy(env, cem, player_in_turn):
-    action = cem.cem_action(env, player_in_turn, conf_parser.active_config['NStep'])
+    action = cem.cem_action(env, player_in_turn, configuration.active_config['NStep'])
     return { tuple(action): 1.0 }

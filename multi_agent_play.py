@@ -1,6 +1,7 @@
 from random import choices
 import pygame
 from pygame.locals import VIDEORESIZE
+import env_util
 
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
@@ -99,9 +100,8 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             
             full_action = [[0,0] for _ in range(env.player_count)]
             full_action[player_in_turn-1] = list(action)
+            action_desc = env_util.action_to_str(env, action)
             player_name = agents_confs[player_in_turn-1]['Name'] if 'Name' in agents_confs[player_in_turn-1] else 'Agent ' + str(player_in_turn)
-            action_name = env.action_names[action[0]]
-            action_desc = 'Idle' if action[1] == 0 else action_name + ' ' + env.action_input_mappings[action_name]['InputMappings'][str(action[1])]['Description']
             print(player_name, 'chose action', action_desc)
             obs, rew, env_done, info = env.step(full_action)
             player_in_turn = player_in_turn % env.player_count + 1

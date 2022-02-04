@@ -3,7 +3,8 @@ import empowerment_maximization
 import numpy as np
 from functools import lru_cache
 import random
-from collections import namedtuple
+import configuration
+import env_util
 
 
 EPSILON = 1e-5
@@ -151,6 +152,8 @@ class CEM():
             action_reward = 0
             for emp_pair_i, agent_emp_conf in enumerate(self.agent_confs[player_id-1]['EmpowermentPairs']):
                 action_reward += agent_emp_conf['Weight'] * expected_empowerments_per_pair[emp_pair_i][a]
+            if configuration.verbose_calculation:
+                print(f'Action {env_util.action_to_str(env, a)} has expected reward {action_reward}')
             if not len(best_rewards) or action_reward >= max(best_rewards) + EPSILON:
                 best_rewards = [action_reward]
                 best_actions = [a]

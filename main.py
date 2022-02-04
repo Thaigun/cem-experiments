@@ -4,7 +4,7 @@ from griddly import GymWrapper, gd
 from griddly_cem_agent import CEM
 import visualiser
 import policies
-import conf_parser
+import configuration
 
 
 def visualise_landscape(env, agents_confs):
@@ -31,8 +31,9 @@ def visualise_landscape(env, agents_confs):
 
 if __name__ == '__main__':
     USE_CONF = "threeway"
-    conf_parser.activate_config(USE_CONF)
-    conf_obj = conf_parser.active_config
+    configuration.set_verbose_calculation(True)
+    configuration.activate_config(USE_CONF)
+    conf_obj = configuration.active_config
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),

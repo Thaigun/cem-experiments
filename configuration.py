@@ -2,6 +2,7 @@ import yaml
 import policies
 
 active_config = None
+verbose_calculation = False
 
 def activate_config(conf_name):
     global active_config
@@ -15,3 +16,7 @@ def activate_config(conf_name):
         if agent_conf['Policy'] != 'KBM':
             agent_conf['Policy'] = getattr(policies, agent_conf['Policy'])
     
+
+def set_verbose_calculation(verbose):
+    global verbose_calculation
+    verbose_calculation = verbose
