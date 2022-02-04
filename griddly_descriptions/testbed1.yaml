@@ -66,12 +66,16 @@ Actions:
       Inputs:
         1:
           OrientationVector: [-1, 0]
+          Description: 'left'
         2:
           OrientationVector: [0, -1]
+          Description: 'up'
         3:
           OrientationVector: [1, 0]
+          Description: 'right'
         4:
           OrientationVector: [0, 1]
+          Description: 'down'
     Behaviours:
       - Src:
           Object: plr

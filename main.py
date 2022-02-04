@@ -9,10 +9,14 @@ import conf_parser
 
 def visualise_landscape(env, agents_confs):
     visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == policies.maximise_cem_policy)
+    player_id_to_names = {a['PlayerId']: (a['Name'] if 'Name' in a else a['PlayerId']) for a in agents_confs}
     empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, conf_obj['NStep'])
     for i, emp_map in enumerate(empowerment_maps):
-        visualiser.emp_map_to_str(emp_map)
-        visualiser.plot_empowerment_landscape(env, emp_map, 'Empowerment: ' + str(agents_confs[visualise_player-1]['EmpowermentPairs'][i]))
+        emp_pair_data = agents_confs[visualise_player-1]['EmpowermentPairs'][i]
+        title = 'Empowerment: ' + player_id_to_names[emp_pair_data['Actor']] + ' -> ' + player_id_to_names[emp_pair_data['Perceptor']]
+        print(title)
+        print(visualiser.emp_map_to_str(emp_map))
+        visualiser.plot_empowerment_landscape(env, emp_map, title)
     cem_map = {}
     for pos in empowerment_maps[0]:
         # In addition, print the CEM map that all different heatmaps weighted and summed
@@ -20,8 +24,9 @@ def visualise_landscape(env, agents_confs):
         for emp_pair_i, map in enumerate(empowerment_maps):
             cem_sum += map[pos] * agents_confs[visualise_player-1]['EmpowermentPairs'][emp_pair_i]['Weight']
         cem_map[pos] = cem_sum
-    visualiser.emp_map_to_str(cem_map)
-    visualiser.plot_empowerment_landscape(env, cem_map, 'CEM heatmap')
+    print('Weighted CEM map')
+    print(visualiser.emp_map_to_str(cem_map))
+    visualiser.plot_empowerment_landscape(env, cem_map, 'Weighted and summed CEM heatmap')
 
 
 if __name__ == '__main__':

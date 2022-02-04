@@ -3,11 +3,13 @@ threeway:
   NStep: 2
   Agents: # The code assumes that the agents are ordered by their id here, starting from PlayerId 1
     - PlayerId: 1
+      Name: "Player"
       MaxHealth: 2
       Policy: "KBM" # Special name meaning keyboard and mouse (human player)
       AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
       Actions: ["idle", "move", "heal"]
     - PlayerId: 2
+      Name: "Companion"
       MaxHealth: 2
       Policy: "maximise_cem_policy"
       AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
@@ -27,6 +29,7 @@ threeway:
           Anticipation: true # Whether to apply trust correction in the anticipation step
           Steps: [] # Steps (after anticipation) where trust correction is applied. NOTE: Starts from 1!
     - PlayerId: 3
+      Name: "Enemy"
       MaxHealth: 2
       Policy: "stupid_move_policy" # Finds the function with this name from policies.py
       AssumedPolicy: "stupid_move_policy" # How other (CEM) agents assume this agent to behave
