@@ -44,19 +44,20 @@ if __name__ == '__main__':
 
     env.reset()
 
+    kbm_players = [a for a in conf_obj['Agents'] if a ['Policy'] == 'KBM']
+    if len(kbm_players) > 1:
+        raise Exception('Only one KBM player is supported')
+
+    kbm_player = kbm_players[0]
     action_names = env.gdy.get_action_names()
-    key_mapping = {
-        # Move actions are action_type 0, the first four are the action_ids for move (directions)
-        (ord('a'),): [action_names.index('move'), 1], 
-        (ord('w'),): [action_names.index('move'), 2],
-        (ord('d'),): [action_names.index('move'), 3],
-        (ord('s'),): [action_names.index('move'), 4],
-        # Idle
-        (ord('q'),): [0, 0],
-        # Rest of the actions don't have a direction for now
-        (ord('h'),): [action_names.index('heal'), 1],
-        (ord(' '),): [action_names.index('attack'), 1],
-        }
+
+    key_mapping = {}
+    for a_i, a in enumerate(kbm_player['Actions']):
+        if a == 'idle':
+            key_mapping[tuple([ord(kbm_player['Keys'][a_i][0])])] = [0, 0]
+            continue
+        for c_i, c in enumerate(kbm_player['Keys'][a_i]):
+            key_mapping[tuple([ord(c)])] = [action_names.index(a), c_i + 1]
 
     print('''
     Use the following keys to control the agents:
