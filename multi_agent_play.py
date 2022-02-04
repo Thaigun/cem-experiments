@@ -103,7 +103,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             full_action = [[0,0] for _ in range(env.player_count)]
             full_action[player_in_turn-1] = list(action)
             action_desc = env_util.action_to_str(env, action)
-            player_name = env_util.agent_id_to_name(player_in_turn)
+            player_name = env_util.agent_id_to_name(agents_confs, player_in_turn)
             print(player_name, 'chose action', action_desc)
             obs, rew, env_done, info = env.step(full_action)
             player_in_turn = player_in_turn % env.player_count + 1
