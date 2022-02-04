@@ -116,7 +116,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
                         pressed_keys.append(event.key)
                     elif event.key == 27:
                         running = False
-                    elif visualiser_callback is not None and event.key in [ord('0', ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('p')]:
+                    elif visualiser_callback is not None and event.key in [ord('0'), ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('p')]:
                         c = chr(event.key)
                         if c == 'p':
                             visualiser_callback(env, agents_confs, trust_correction=trust_correction)
