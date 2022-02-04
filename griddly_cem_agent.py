@@ -174,9 +174,12 @@ class CEM():
     @lru_cache(maxsize=5000)
     def calc_pd_s_a(self, env, player_id, action):
         # Build it lazily
-        player_health = find_player_health(env.get_state(), player_id)
-        if player_health is not None:
-            health_ratio = player_health / self.agent_confs[player_id-1]['MaxHealth']
+        if configuration.health_performance_consistency:
+            player_health = find_player_health(env.get_state(), player_id)
+            if player_health is not None:
+                health_ratio = player_health / self.agent_confs[player_id-1]['MaxHealth']
+            else:
+                health_ratio = 1.0
         else:
             health_ratio = 1.0
         # if the player is dead, the empowerment is 0

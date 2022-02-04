@@ -2,6 +2,7 @@ from random import choices
 import pygame
 from pygame.locals import VIDEORESIZE
 import env_util
+import configuration
 
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
@@ -80,6 +81,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
         agent_policies[agent_conf['PlayerId']] = agent_conf['Policy']
 
     player_in_turn = 1
+    trust_correction = False
 
     while running:
         if env_done:
@@ -101,7 +103,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             full_action = [[0,0] for _ in range(env.player_count)]
             full_action[player_in_turn-1] = list(action)
             action_desc = env_util.action_to_str(env, action)
-            player_name = agents_confs[player_in_turn-1]['Name'] if 'Name' in agents_confs[player_in_turn-1] else 'Agent ' + str(player_in_turn)
+            player_name = env_util.agent_id_to_name(player_in_turn)
             print(player_name, 'chose action', action_desc)
             obs, rew, env_done, info = env.step(full_action)
             player_in_turn = player_in_turn % env.player_count + 1
@@ -114,8 +116,18 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
                         pressed_keys.append(event.key)
                     elif event.key == 27:
                         running = False
-                    elif visualiser_callback is not None and event.key == ord('p'):
-                        visualiser_callback(env, agents_confs)
+                    elif visualiser_callback is not None and event.key in [ord('0', ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('p')]:
+                        c = chr(event.key)
+                        if c == 'p':
+                            visualiser_callback(env, agents_confs, trust_correction=trust_correction)
+                        else:
+                            visualiser_callback(env, agents_confs, int(c)-1, trust_correction=trust_correction)
+                    elif event.key == ord('t'):
+                        trust_correction = not trust_correction
+                        print('Trust correction (for visualisations) is', trust_correction)
+                    elif event.key == ord('y'):
+                        configuration.set_health_performance_consistency(not configuration.health_performance_consistency)
+                        print('Health performance consistency is', configuration.health_performance_consistency)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
                         pressed_keys.remove(event.key)

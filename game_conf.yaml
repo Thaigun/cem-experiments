@@ -1,6 +1,7 @@
 threeway:
   GriddlyDescription: "testbed1.yaml"
   NStep: 2
+  HealthPerformanceConsistency: true
   Agents: # The code assumes that the agents are ordered by their id here, starting from PlayerId 1
     - PlayerId: 1
       Name: "Player"

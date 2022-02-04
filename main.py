@@ -5,28 +5,42 @@ from griddly_cem_agent import CEM
 import visualiser
 import policies
 import configuration
+import env_util
 
 
-def visualise_landscape(env, agents_confs):
+def visualise_landscape(env, agents_confs, emp_idx=None, trust_correction=False):
+    '''
+    emp_idx: 
+    None -> visualise all
+    -1 -> visualise the weighted full cem
+    >0 -> visualise the cem pair with the given index
+    '''
+    # Find the player id of the agent with CEM policy
     visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == policies.maximise_cem_policy)
+    # Make a mapping from player id to the name defined in YAML
     player_id_to_names = {a['PlayerId']: (a['Name'] if 'Name' in a else a['PlayerId']) for a in agents_confs}
-    empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, conf_obj['NStep'])
+    empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, configuration.active_config['NStep'], trust_correction, None if emp_idx == -1 else emp_idx)
+    # TODO: If empowerment_maps is a dict of dicts, does the enumerate work anymore?
     for i, emp_map in enumerate(empowerment_maps):
+        if i != emp_idx and emp_idx is not None:
+            continue
         emp_pair_data = agents_confs[visualise_player-1]['EmpowermentPairs'][i]
-        title = 'Empowerment: ' + player_id_to_names[emp_pair_data['Actor']] + ' -> ' + player_id_to_names[emp_pair_data['Perceptor']]
+        title = 'Empowerment: ' + player_id_to_names[emp_pair_data['Actor']] + ' -> ' + player_id_to_names[emp_pair_data['Perceptor']] + ', steps: ' + str(configuration.active_config['NStep'])
         print(title)
         print(visualiser.emp_map_to_str(emp_map))
         visualiser.plot_empowerment_landscape(env, emp_map, title)
-    cem_map = {}
-    for pos in empowerment_maps[0]:
-        # In addition, print the CEM map that all different heatmaps weighted and summed
-        cem_sum = 0
-        for emp_pair_i, map in enumerate(empowerment_maps):
-            cem_sum += map[pos] * agents_confs[visualise_player-1]['EmpowermentPairs'][emp_pair_i]['Weight']
-        cem_map[pos] = cem_sum
-    print('Weighted CEM map')
-    print(visualiser.emp_map_to_str(cem_map))
-    visualiser.plot_empowerment_landscape(env, cem_map, 'Weighted and summed CEM heatmap')
+    
+    if emp_idx is None or emp_idx == -1:
+        cem_map = {}
+        for pos in empowerment_maps[0]:
+            # In addition, print the CEM map that all different heatmaps weighted and summed
+            cem_sum = 0
+            for emp_pair_i, map in enumerate(empowerment_maps):
+                cem_sum += map[pos] * agents_confs[visualise_player-1]['EmpowermentPairs'][emp_pair_i]['Weight']
+            cem_map[pos] = cem_sum
+        print('Weighted CEM map; steps: ' + str(configuration.active_config['NStep']))
+        print(visualiser.emp_map_to_str(cem_map))
+        visualiser.plot_empowerment_landscape(env, cem_map, 'Weighted and summed CEM heatmap, steps: ' + str(configuration.active_config['NStep']))
 
 
 if __name__ == '__main__':
@@ -49,22 +63,39 @@ if __name__ == '__main__':
         raise Exception('Only one KBM player is supported')
 
     kbm_player = kbm_players[0]
+    cem_agent_conf = next(agent_conf for agent_conf in conf_obj['Agents'] if agent_conf['Policy'] == policies.maximise_cem_policy)
+    
+    print("Use the following keys to print different empowerments")
+    for emp_conf_i, emp_conf in enumerate(cem_agent_conf['EmpowermentPairs']):
+        print(f'{emp_conf_i + 1}: {env_util.agent_id_to_name(conf_obj["Agents"], emp_conf["Actor"])} -> {env_util.agent_id_to_name(conf_obj["Agents"], emp_conf["Perceptor"])}')
+    print("0: Weighted full-CEM")
+    print("P: All")
+    
+    print("Press T to toggle trust correction on or off for the visualisation (DOESN'T APPLY TO AGENT DECISIONS)")
+    print("Press Y to toggle health-performance consistency on or off (APPLIES TO AGENT DECISIONS)")
+
     action_names = env.gdy.get_action_names()
+    reserved_keys = ['p', 't', 'y', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 
     key_mapping = {}
     for a_i, a in enumerate(kbm_player['Actions']):
         if a == 'idle':
-            key_mapping[tuple([ord(kbm_player['Keys'][a_i][0])])] = [0, 0]
+            idle_key = ord(kbm_player['Keys'][a_i][0])
+            if chr(idle_key) in reserved_keys:
+                raise Exception('Ill conf. Reserved key: ' + str(chr(idle_key)))
+            key_mapping[tuple([idle_key])] = [0, 0]
             continue
         for c_i, c in enumerate(kbm_player['Keys'][a_i]):
+            if c in reserved_keys:
+                raise Exception('Ill conf. Reserved key: ' + str(c))
             key_mapping[tuple([ord(c)])] = [action_names.index(a), c_i + 1]
 
     print('''
-    Use the following keys to control the agents:
-    a, w, d, s: Move
-    q: Idle
-    h: Heal
-    space: Attack
+Use the following keys to control the agents:
+a, w, d, s: Move
+q: Idle
+h: Heal
+space: Attack
     ''')
     
     cem = CEM(env, conf_obj['Agents'])

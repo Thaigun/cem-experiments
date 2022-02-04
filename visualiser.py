@@ -47,7 +47,10 @@ def plot_empowerment_landscape(env, position_emps, title):
     plt.show()
 
 
-def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust_correction=False):
+def build_landscape(orig_env, player_id, agent_configs, n_step, trust_correction=False, emp_idx=None, samples=1):
+    '''
+    emp_idx: Which empowerment pair to calculate. If None, calculate all.
+    '''
     def non_blocked_moves(env, player_id, visited_coords):
         available_actions = env.game.get_available_actions(player_id)
         player_pos = list(available_actions)[0]
@@ -92,6 +95,8 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust
         plr_pos = find_player_pos_vanilla(env, player_id)
         visited_coords.add(tuple(plr_pos))
         for emp_pair_i, emp_pair in enumerate(emp_pairs):
+            if emp_idx is not None and emp_idx != emp_pair_i:
+                continue
             state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction=trust_correction)
             calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
         for a in non_blocked_moves(env, player_id, visited_coords):
@@ -117,7 +122,7 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust
 
     # Prepare for traversal
     emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in agent_configs[player_id-1]['EmpowermentPairs']]
-    calculated_emps = [{} for _ in emp_pairs]
+    calculated_emps = [{} for _ in agent_configs[player_id-1]['EmpowermentPairs']]
     visited_coords = set()
     cem_env = CEM(env, agent_configs, samples=samples)
 
