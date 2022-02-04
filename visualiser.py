@@ -85,6 +85,9 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust
         }
         return (action[0], counter_moves[action[1]])
 
+    def build_full_action(env, action, player_id):
+        return [([0,0] if p != player_id else list(action)) for p in range(1, env.player_count + 1)]
+
     def traverse(env, player_id, calculated_emps, visited_coords, emp_pairs, cem_env, orientation_fix_action):
         plr_pos = find_player_pos_vanilla(env, player_id)
         visited_coords.add(tuple(plr_pos))
@@ -92,11 +95,11 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, samples=1, trust
             state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction=trust_correction)
             calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
         for a in non_blocked_moves(env, player_id, visited_coords):
-            env.step(a)
+            env.step(build_full_action(env, a, player_id))
             env.step(orientation_fix_action)
             env.render(observer='global')
             traverse(env, player_id, calculated_emps, visited_coords, emp_pairs, cem_env, orientation_fix_action)
-            env.step(get_unmove_action(a))
+            env.step(build_full_action(env, get_unmove_action(a), player_id))
             env.step(orientation_fix_action)
             env.render(observer='global')
 
