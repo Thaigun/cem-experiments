@@ -2,7 +2,7 @@ from griddly import gd, GymWrapper
 import cProfile
 import os
 
-from griddly_cem_agent import CEM
+from griddly_cem_agent import CEM, find_alive_players, find_player_pos
 import configuration
 
 if __name__ == '__main__':
@@ -24,6 +24,8 @@ if __name__ == '__main__':
             full_action[1] = action
             obs, rew, env_done, info = env.step(full_action)
 
-    pr.print_stats(sort='cumtime')
+    pr.print_stats(sort='tottime')
 
     print('get_state_mapping: ', cem.calc_pd_s_a.cache_info())
+    print('find_alive_players: ', find_alive_players.cache_info())
+    print('find_player_pos: ', find_player_pos.cache_info())

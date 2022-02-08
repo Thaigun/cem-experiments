@@ -17,6 +17,7 @@ def hash_obs(obs, player_pos):
     return hash(obs.tobytes() + bytes(player_pos))
 
 
+@lru_cache(maxsize=3000)
 def find_player_pos(wrapped_env, player_id):
     agent_actions = wrapped_env.get_available_actions(player_id)
     if not agent_actions:
@@ -38,6 +39,7 @@ def find_player_health(env_state, player_id):
     return player_variables[0]['health']
 
 
+@lru_cache(maxsize=3000)
 def find_alive_players(wrapped_env):
     return [player_id for player_id in range(1, wrapped_env.player_count + 1) if wrapped_env.get_available_actions(player_id)]
 
