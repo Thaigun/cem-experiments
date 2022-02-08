@@ -79,7 +79,7 @@ void main() {
   int health = getObjectVariable(pushConsts.idx, 0, environmentData.objectVariableCount);
   int maxHealth = getObjectVariable(pushConsts.idx, 1, environmentData.objectVariableCount);
 
-  if(object.objectType == 2) {
+  if(object.objectType == 0) {
     outNormalizedHealth = float(health)/float(maxHealth);
   } else {
     outNormalizedHealth = -1.0;
