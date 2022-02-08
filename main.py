@@ -51,6 +51,7 @@ if __name__ == '__main__':
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
+                     shader_path='shaders',
                      player_observer_type=gd.ObserverType.VECTOR,
                      global_observer_type=gd.ObserverType.SPRITE_2D,
                      image_path='./art',

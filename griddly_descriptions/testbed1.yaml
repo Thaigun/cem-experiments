@@ -5,6 +5,8 @@ Environment:
   Name: mean
   Observers:
     Sprite2D:
+      Shader:
+        ObjectVariables: [health, max_health]
       TileSize: 24
       BackgroundTile: Floor.png
     Vector:
@@ -153,7 +155,7 @@ Actions:
           Object: plr
           Commands:
             - lt:
-                Arguments: [health, 2]            
+                Arguments: [health, max_health]            
                 Commands:
                   - incr: health
 
@@ -182,6 +184,8 @@ Objects:
     MapCharacter: P
     Variables:
       - Name: health
+        InitialValue: 2
+      - Name: max_health
         InitialValue: 2
     InitialActions:
       - Action: choose_icon
