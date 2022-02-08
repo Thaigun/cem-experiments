@@ -39,7 +39,30 @@ threeway:
 
 trust:
   GriddlyDescription: "testbed_trust.yaml"
-  NStep: 2
+  NStep: 1
+  Agents:
+    - PlayerId: 1
+      MaxHealth: 1
+      Policy: "uniform_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move", "attack"]
+    - PlayerId: 2
+      MaxHealth: 1
+      Policy: "maximise_cem_policy"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move"]
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 1.0
+      Trust:
+        - PlayerId: 1
+          Anticipation: true
+          Steps: [1]
+
+no_trust:
+  GriddlyDescription: "testbed_trust.yaml"
+  NStep: 1
   Agents:
     - PlayerId: 1
       MaxHealth: 1
@@ -58,7 +81,7 @@ trust:
       Trust:
         - PlayerId: 1
           Anticipation: false
-          Steps: [1]
+          Steps: []
 
 fight:
   GriddlyDescription: "testbed3.yaml"

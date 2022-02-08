@@ -16,13 +16,18 @@ if __name__ == '__main__':
     configuration.activate_config("trust")
     emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in configuration.active_config['Agents'][player_id-1]['EmpowermentPairs']]
     
-    for nstep in range(1, 2):
-        print('nstep: ', nstep)
-        env.reset()
-        trust_correction_steps = (False, True)
-        calculated_emps = build_landscape(env, player_id, configuration.active_config['Agents'], configuration.active_config['NStep'], trust_correction=True)
-        for emp_pair_i, emp_pair in enumerate(emp_pairs):
-            print(emp_map_to_str(calculated_emps[emp_pair_i]))
-            plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
+    print('With trust correction:')
+    env.reset()
+    calculated_emps = build_landscape(env, player_id, configuration.active_config['Agents'], configuration.active_config['NStep'], trust_correction=True)
+    for emp_pair_i, emp_pair in enumerate(emp_pairs):
+        print(emp_map_to_str(calculated_emps[emp_pair_i]))
+        plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
 
+    print('Without trust correction:')
+    configuration.activate_config("no_trust")
+    env.reset()
+    calculated_emps = build_landscape(env, player_id, configuration.active_config['Agents'], configuration.active_config['NStep'], trust_correction=True)
+    for emp_pair_i, emp_pair in enumerate(emp_pairs):
+        print(emp_map_to_str(calculated_emps[emp_pair_i]))
+        plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
     
