@@ -29,7 +29,7 @@ def find_player_pos_vanilla(env, player_id):
 
 
 def find_player_health(env_state, player_id):
-    player_variables = [o['Variables'] for o in env_state['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id]
+    player_variables = [o['Variables'] for o in env_state['Objects'] if o['Name'] == 'avatar' and o['PlayerId'] == player_id]
     if not player_variables:
         return 0
     # If health is not an object variable, return None
@@ -283,7 +283,7 @@ class CEM():
                             follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
                             if follow_up_emp < EPSILON:
                                 current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
-                                if current_state_emp != 0:
+                                if current_state_emp >= EPSILON:
                                     break
 
                 child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)

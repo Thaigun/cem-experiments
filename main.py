@@ -59,11 +59,6 @@ if __name__ == '__main__':
 
     env.reset()
 
-    kbm_players = [a for a in conf_obj['Agents'] if a ['Policy'] == 'KBM']
-    if len(kbm_players) > 1:
-        raise Exception('Only one KBM player is supported')
-
-    kbm_player = kbm_players[0]
     cem_agent_conf = next(agent_conf for agent_conf in conf_obj['Agents'] if agent_conf['Policy'] == policies.maximise_cem_policy)
     
     print("Use the following keys to print different empowerments")
@@ -78,26 +73,27 @@ if __name__ == '__main__':
     action_names = env.gdy.get_action_names()
     reserved_keys = ['p', 't', 'y', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
 
-    key_mapping = {}
-    for a_i, a in enumerate(kbm_player['Actions']):
-        if a == 'idle':
-            idle_key = ord(kbm_player['Keys'][a_i][0])
-            if chr(idle_key) in reserved_keys:
-                raise Exception('Ill conf. Reserved key: ' + str(chr(idle_key)))
-            key_mapping[tuple([idle_key])] = [0, 0]
-            continue
-        for c_i, c in enumerate(kbm_player['Keys'][a_i]):
-            if c in reserved_keys:
-                raise Exception('Ill conf. Reserved key: ' + str(c))
-            key_mapping[tuple([ord(c)])] = [action_names.index(a), c_i + 1]
+    kbm_players = [a for a in conf_obj['Agents'] if a ['Policy'] == 'KBM']
+    if len(kbm_players) > 1:
+        raise Exception('Only one KBM player is supported')
 
-    print('''
-Use the following keys to control the agents:
-a, w, d, s: Move
-q: Idle
-h: Heal
-space: Attack
-    ''')
+    if len(kbm_players) == 1:
+        kbm_player = kbm_players[0]
+        key_mapping = {}
+        key_action_pairs = zip(kbm_player['Keys'], kbm_player['Actions'])
+        print('Use the following keys to control the agents:')
+        for key, action_name in key_action_pairs:
+            print(f'{key}: {action_name}')
+            if action_name == 'idle':
+                if key in reserved_keys:
+                    raise Exception('Ill conf. Reserved key: ' + key)
+                idle_key = ord(key)
+                key_mapping[tuple([idle_key])] = [0, 0]
+                continue
+            for c_i, c in enumerate(key):
+                if c in reserved_keys:
+                    raise Exception('Ill conf. Reserved key: ' + c)
+                key_mapping[tuple([ord(c)])] = [action_names.index(action_name), c_i + 1]
     
     cem = CEM(env, conf_obj['Agents'])
 

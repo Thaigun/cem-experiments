@@ -5,6 +5,8 @@ Environment:
   Name: mean
   Observers:
     Sprite2D:
+      Shader:
+        ObjectVariables: [ health, max_health ]
       TileSize: 24
       BackgroundTile: oryx/oryx_fantasy/floor9-3.png
     Vector:
@@ -12,7 +14,7 @@ Environment:
       IncludeRotation: true
       IncludeVariables: true
   Player:
-    AvatarObject: plr
+    AvatarObject: avatar
     Count: 2
     Observer:
       RotateWithAvatar: true
@@ -21,7 +23,7 @@ Environment:
       Width: 5
   Termination:
     Lose:
-      - lte: [plr:count, 0]
+      - lte: [avatar:count, 0]
   Levels:
     - |
       w w w w w w w w w 
@@ -39,19 +41,19 @@ Actions:
   - Name: move
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - mov: _dest
             - rot: _dir
         Dst:
           Object: _empty
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - mov: _dest
             - rot: _dir
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - cascade: _dest
 
@@ -63,15 +65,15 @@ Actions:
           VectorToDest: [0, -1]
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
           Object: _empty
           Commands:
             - spawn: projectile
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - decr: health
             - lte:
@@ -103,7 +105,7 @@ Actions:
           Commands:
             - remove: true
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - decr: health
             - lte:
@@ -119,12 +121,12 @@ Actions:
           VectorToDest: [0, -1]
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - lt:
-                Arguments: [health, 2]            
+                Arguments: [health, max_health]            
                 Commands:
                   - incr: health
 
@@ -135,10 +137,12 @@ Objects:
     Observers:
       Sprite2D:
         - Image: oryx/oryx_fantasy/wall9-3.png
-  - Name: plr
+  - Name: avatar
     MapCharacter: P
     Variables:
       - Name: health
+        InitialValue: 2
+      - Name: max_health
         InitialValue: 2
     Observers:
       Sprite2D:

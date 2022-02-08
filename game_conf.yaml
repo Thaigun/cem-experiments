@@ -8,8 +8,8 @@ threeway:
       MaxHealth: 2
       Policy: "KBM" # Special name meaning keyboard and mouse (human player)
       AssumedPolicy: "uniform_policy" # How other (CEM) agents assume this agent to behave
-      Actions: ["idle", "move", "heal"]
-      Keys: ["q", "awds", "h"] # Keys for the Actions. A string with more than one character maps different action_ids of the corresponding action.
+      Actions: ["idle", "move", "heal", "attack"]
+      Keys: ["q", "awds", "h", "e"] # Keys for the Actions. A string with more than one character maps different action_ids of the corresponding action.
     - PlayerId: 2
       Name: "Companion"
       MaxHealth: 2

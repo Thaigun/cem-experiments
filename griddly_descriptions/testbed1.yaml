@@ -14,7 +14,7 @@ Environment:
       IncludeRotation: true
       IncludeVariables: true
   Player:
-    AvatarObject: plr
+    AvatarObject: avatar
     Count: 3
     Observer:
       RotateWithAvatar: true
@@ -23,7 +23,7 @@ Environment:
       Width: 5
   Termination:
     Lose:
-      - lte: [plr:count, 0]
+      - lte: [avatar:count, 0]
   Levels:
     - |
       w w w w w w w w w 
@@ -41,23 +41,23 @@ Actions:
   - Name: move
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - mov: _dest
             - rot: _dir
         Dst:
           Object: _empty
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - mov: _dest
             - rot: _dir
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - cascade: _dest
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - rot: _dir
         Dst:
@@ -80,11 +80,11 @@ Actions:
           Description: 'down'
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - rot: _dir
         Dst:
-          Object: plr
+          Object: avatar
 
   - Name: attack
     InputMapping:
@@ -94,15 +94,15 @@ Actions:
           VectorToDest: [0, -1]
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
           Object: _empty
           Commands:
             - spawn: projectile
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - decr: health
             - lte:
@@ -134,7 +134,7 @@ Actions:
           Commands:
             - remove: true
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - decr: health
             - lte:
@@ -150,9 +150,9 @@ Actions:
           VectorToDest: [0, -1]
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
         Dst:
-          Object: plr
+          Object: avatar
           Commands:
             - lt:
                 Arguments: [health, max_health]            
@@ -167,11 +167,11 @@ Actions:
           VectorToDest: [0, 0]
     Behaviours:
       - Src:
-          Object: plr
+          Object: avatar
           Commands:
             - set_tile: src._playerId
         Dst:
-          Object: plr
+          Object: avatar
 
 # Objects of the world
 Objects:
@@ -180,7 +180,7 @@ Objects:
     Observers:
       Sprite2D:
         - Image: Wall.png
-  - Name: plr
+  - Name: avatar
     MapCharacter: P
     Variables:
       - Name: health

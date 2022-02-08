@@ -25,3 +25,6 @@ Print the empowerment heatmaps with P. This takes a while, your system's memory 
 The program can be configured in the `game_conf.yaml` file.
 
 Comprehensive instructions will be here once the format has established and all options are available through the config file.
+
+# Enabling health-bars
+TODO: Instructions to be added.

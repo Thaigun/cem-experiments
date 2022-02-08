@@ -112,7 +112,7 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, trust_correction
     # We have to start with an idle step because the observations are not cloned and we need them.
     env.step([[0,0] for _ in range(env.player_count)])
     # Extract the original rotation of the player with given player_id
-    player_rot_name = next(o['Orientation'] for o in env.get_state()['Objects'] if o['Name'] == 'plr' and o['PlayerId'] == player_id)
+    player_rot_name = next(o['Orientation'] for o in env.get_state()['Objects'] if o['Name'] == 'avatar' and o['PlayerId'] == player_id)
     player_rot = {'LEFT': 1, 'UP': 2, 'RIGHT': 3, 'DOWN': 4, 'NONE': 2}[player_rot_name]
     
     # Build an action that is used to fix the orientation after each step
