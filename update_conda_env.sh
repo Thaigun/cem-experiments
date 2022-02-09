@@ -1,0 +1,1 @@
+conda env update --name cem-experiments --file environment.yml --prune
