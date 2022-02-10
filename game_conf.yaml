@@ -1,3 +1,30 @@
+collector:
+  GriddlyDescription: "collector_game.yaml"
+  NStep: 2
+  HealthPerformanceConsistency: false
+  Agents:
+    - PlayerId: 1
+      Name: Player
+      Policy: "KBM"
+      AssumedPolicy: "uniform_policy"
+      Actions: ["move"]
+      Keys: ["awdsqexz"]
+    - PlayerId: 2
+      Name: "Blocker"
+      Policy: "maximise_cem_policy"
+      AssumedPolicy: "uniform_policy"
+      EmpowermentPairs:
+        - Actor: 2
+          Perceptor: 2
+          Weight: 0.2
+        - Actor: 2
+          Perceptor: 1
+          Weight: 0.3
+        - Actor: 1
+          Perceptor: 1
+          Weight: -1.0
+      Actions: ["push_move"]
+
 threeway:
   GriddlyDescription: "testbed1.yaml"
   NStep: 2

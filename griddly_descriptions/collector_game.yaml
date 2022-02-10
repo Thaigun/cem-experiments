@@ -1,0 +1,215 @@
+Version: "0.1"
+
+# Define the environment
+Environment:
+  Name: collector
+  Observers:
+    Sprite2D:
+      Shader:
+        ObjectVariables: [health, max_health] # Not used yet, but easier to pass them than to change the shader...
+      TileSize: 24
+      BackgroundTile: Floor.png
+    Vector:
+      IncludePlayerId: true
+      IncludeRotation: true
+      IncludeVariables: true
+  Player:
+    AvatarObject: avatar
+    Count: 2
+    Observer:
+      RotateWithAvatar: true
+      TrackAvatar: true
+      Height: 7
+      Width: 7
+  Variables:
+    - Name: star_count
+      InitialValue: 8
+      PerPlayer: false
+  Termination:
+    End:
+      - eq: [star_count, 0]
+  Levels:
+    - |
+      w w w w w w w w w 
+      w . . . . . . . w
+      w s . s . s . s w
+      w . . . . . . . w
+      w s . s . s . s w
+      w . . . P2 . . . w
+      w . . . . . . . w
+      w . . . P1 . . . w
+      w w w w w w w w w
+
+# Available action options 
+Actions:
+  - Name: move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+          VectorToDest: [-1, 0]
+          Description: 'left'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [0, -1]
+          Description: 'up'
+        3:
+          OrientationVector: [1, 0]
+          VectorToDest: [1, 0]
+          Description: 'right'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [0, 1]
+          Description: 'down'
+        5:
+          OrientationVector: [0, -1]
+          VectorToDest: [-1, -1]
+          Description: 'nw'
+        6:
+          OrientationVector: [0, -1]
+          VectorToDest: [1, -1]
+          Description: 'ne'
+        7:
+          OrientationVector: [0, 1]
+          VectorToDest: [1, 1]
+          Description: 'se'
+        8:
+          OrientationVector: [0, 1]
+          VectorToDest: [-1, 1]
+          Description: 'sw'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: star
+          Commands:
+            - remove: true
+            - decr: star_count
+
+  - Name: push_move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+          VectorToDest: [-1, 0]
+          Description: 'left'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [0, -1]
+          Description: 'up'
+        3:
+          OrientationVector: [1, 0]
+          VectorToDest: [1, 0]
+          Description: 'right'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [0, 1]
+          Description: 'down'
+        5:
+          OrientationVector: [0, -1]
+          VectorToDest: [-1, -1]
+          Description: 'nw'
+        6:
+          OrientationVector: [0, -1]
+          VectorToDest: [1, -1]
+          Description: 'ne'
+        7:
+          OrientationVector: [0, 1]
+          VectorToDest: [1, 1]
+          Description: 'se'
+        8:
+          OrientationVector: [0, 1]
+          VectorToDest: [-1, 1]
+          Description: 'sw'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: [avatar, star]
+          Commands:
+            - cascade: _dest
+
+  - Name: rotate
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+          Description: 'left'
+        2:
+          OrientationVector: [0, -1]
+          Description: 'up'
+        3:
+          OrientationVector: [1, 0]
+          Description: 'right'
+        4:
+          OrientationVector: [0, 1]
+          Description: 'down'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - rot: _dir
+        Dst:
+          Object: avatar
+
+  - Name: choose_icon
+    InputMapping:
+      Internal: true
+      Inputs:
+        1:
+          VectorToDest: [0, 0]
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - set_tile: src._playerId
+        Dst:
+          Object: avatar
+
+# Objects of the world
+Objects:
+  - Name: wall
+    MapCharacter: w
+    Observers:
+      Sprite2D:
+        - Image: Wall.png
+  - Name: avatar
+    MapCharacter: P
+    Variables:
+      - Name: health
+        InitialValue: 2
+      - Name: max_health
+        InitialValue: 2
+    InitialActions:
+      - Action: choose_icon
+    Observers:
+      Sprite2D:
+        - Image: Player.png
+        - Image: Player.png
+        - Image: Companion.png
+        - Image: Enemy.png
+  - Name: star
+    MapCharacter: s
+    Observers:
+      Sprite2D:
+        - Image: Star.png
