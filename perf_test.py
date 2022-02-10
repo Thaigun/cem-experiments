@@ -19,7 +19,7 @@ if __name__ == '__main__':
     with cProfile.Profile() as pr:
         cem = CEM(env, configuration.active_config['Agents'])
         for _ in range(1):
-            action = cem.cem_action(env, 2, 2)
+            action = cem.cem_action(env, 2, configuration.active_config.get('NStep'))
             full_action = [[0, 0] for _ in range(env.player_count)]
             full_action[1] = action
             obs, rew, env_done, info = env.step(full_action)
