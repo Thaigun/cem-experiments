@@ -14,7 +14,7 @@ A repository for the code related to my Master's thesis.
 If there have been changes to the environment since the last time you ran it, you can update it by running the following command in the project root: `conda env update --name cem-experiments --file environment.yml --prune`. The `--prune` option removes packages that are not found in the `environment.yml`. Omit the option if you do not wish this behavior.
 
 # Run
-Once you have the environment active, run `python main.py`.
+Once you have the environment active, run `python main.py` to see the computer play against itself. If you want to control one of the agents with keyboard, run `python keyboard_game.py`. See the command line for useful commands.
 
 # Controls
 Move with WASD, attack the character in front of you or ahead of you with SPACE, heal the character in front of you with H.
