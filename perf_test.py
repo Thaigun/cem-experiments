@@ -6,7 +6,7 @@ from griddly_cem_agent import CEM, find_alive_players, find_player_pos
 import configuration
 
 if __name__ == '__main__':
-    configuration.activate_config('threeway')
+    configuration.activate_config('collector')
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(current_path + '/griddly_descriptions/' + configuration.active_config.get('GriddlyDescription'),

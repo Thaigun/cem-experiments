@@ -5,13 +5,14 @@ collector:
   Agents:
     - PlayerId: 1
       Name: Player
-      Policy: "KBM"
+      Policy: "mcts_policy"
+      MCTSIterations: 4000
       AssumedPolicy: "uniform_policy"
       Actions: ["move"]
       Keys: ["awdsqexz"]
     - PlayerId: 2
       Name: "Blocker"
-      Policy: "maximise_cem_policy"
+      Policy: "stupid_move_policy"
       AssumedPolicy: "uniform_policy"
       EmpowermentPairs:
         - Actor: 2

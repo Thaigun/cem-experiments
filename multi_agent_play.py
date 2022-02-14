@@ -13,45 +13,10 @@ def display_arr(screen, arr, video_size, transpose):
 
 
 def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_action=None, visualiser_callback=None):
-    """Allows one to play the game using keyboard.
-
-    Arguments
-    ---------
-    env: gym.Env
-        Environment to use for playing.
-    transpose: bool
-        If True the output of observation is transposed.
-        Defaults to true.
-    fps: int
-        Maximum number of steps of the environment to execute every second.
-        Defaults to 30.
-    zoom: float
-        Make screen edge this many times bigger
-    callback: lambda or None
-        Callback if a callback is provided it will be executed after
-        every step. It takes the following input:
-            env: the environment
-            obs_t: observation before performing action
-            obs_tp1: observation after performing action
-            action: action that was executed
-            rew: reward that was received
-            done: whether the environment is done or not
-            info: debug info
-    keys_to_action: dict: tuple(int) -> int or None
-        Mapping from keys pressed to action performed.
-        For example if pressed 'w' and space at the same time is supposed
-        to trigger action number 2 then key_to_action dict would look like this:
-
-            {
-                # ...
-                sorted(ord('w'), ord(' ')) -> 2
-                # ...
-            }
-        If None, default key_to_action mapping for that env is used, if provided.
-    """
+    # Allows one to play the game using keyboard.
     rendered = env.render(observer="global", mode="rgb_array")
 
-    if keys_to_action is None:
+    if keys_to_action is not None:
         if hasattr(env, "get_keys_to_action"):
             keys_to_action = env.get_keys_to_action()
         elif hasattr(env.unwrapped, "get_keys_to_action"):
@@ -62,7 +27,9 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
                 + " does not have explicit key to action mapping, "
                 + "please specify one manually"
             )
-    relevant_keys = set(sum(map(list, keys_to_action.keys()), []))
+        relevant_keys = set(sum(map(list, keys_to_action.keys()), []))
+    else:
+        relevant_keys = set()
 
     video_size = [rendered.shape[1], rendered.shape[0]]
     if zoom is not None:
