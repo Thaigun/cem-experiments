@@ -29,7 +29,8 @@ def mcts_policy(env, cem, player_in_turn):
         if i % 1000 == 0:
             print('Iteration: ' + str(i))
         clone_env = env.clone()
-        #clone_env.render(mode='human', observer='global')
+        if configuration.visualise_all:
+            clone_env.render(mode='human', observer='global')
         tree_root.iterate(clone_env, player_in_turn, player_in_turn, action_spaces, max_sim_steps=20000, is_root=True)
 
     action_idx = tree_root.best_child_idx()

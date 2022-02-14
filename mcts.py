@@ -1,6 +1,7 @@
 from math import log, sqrt
 import random
 import env_util
+import configuration
 
 
 SELECTION_EPSILON = 0.01
@@ -36,10 +37,21 @@ class Node:
             selected_child = self.children[selected_child_i]
             action = action_spaces[player_in_turn-1][selected_child_i]
             # TODO: What if the game ends here?
-            env.step(env_util.build_action(action, len(action_spaces), player_in_turn))
-            #env.render(mode='human', observer='global')
+            obs, reward, done, info = env.step(env_util.build_action(action, len(action_spaces), player_in_turn))
+            if configuration.visualise_all:
+                env.render(mode='human', observer='global')
+            
+            if done:
+                winner = env_util.find_winner(info)
+                if winner == -1:
+                    winner = actor
+                if winner == actor:
+                    round_result = 1
+                else:
+                    round_result = 2*max_sim_steps
             # Update the average score and backpropagate the result
-            round_result = selected_child.iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
+            else:
+                round_result = selected_child.iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
 
         self.visits += 1
         self.avg_score = (self.avg_score * (self.visits - 1) + round_result) / self.visits
@@ -76,24 +88,20 @@ class Node:
             # Select a random action
             action = random.choice(action_spaces[current_agent-1])
             obs, reward, done, info = env.step(env_util.build_action(action, len(action_spaces), current_agent))
-            #env.render(mode='human', observer='global')
+            if configuration.visualise_all:
+                env.render(mode='human', observer='global')
             step_count += 1
             current_agent = current_agent % env.player_count + 1
             if done:
-                break
-            
-        # Set the score of the initial rollout
-        if done:
-            winner = env_util.find_winner(info)
-            # If the environment is done but there is no winner, we assume it was a good result
-            if winner == -1:
-                winner = player_in_turn
-            if winner == player_in_turn:
-                return step_count
-            else:
-                return 2*step_count
-        else:
-            return 2*step_count
+                winner = env_util.find_winner(info)
+                # If the environment is done but there is no winner, we assume it was a good result
+                if winner == -1:
+                    winner = player_in_turn
+                if winner == player_in_turn:
+                    return step_count
+                else:
+                    return 2*step_count
+        return 2*step_count
 
 
     def calculate_selection_score(self, total_iters):
@@ -119,9 +127,20 @@ class OpponentNode(Node):
                 self.children = [OpponentNode() for _ in action_spaces[player_in_turn-1]]
 
         selected_child_i = random.choice(range(len(self.children)))
-        env.step(env_util.build_action(action_spaces[player_in_turn-1][selected_child_i], len(action_spaces), player_in_turn))
-        #env.render(mode='human', observer='global')
-        child_res = self.children[selected_child_i].iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
+        obs, rew, done, info = env.step(env_util.build_action(action_spaces[player_in_turn-1][selected_child_i], len(action_spaces), player_in_turn))
+        if configuration.visualise_all:
+            env.render(mode='human', observer='global')
+        if done:
+            winner = env_util.find_winner(info)
+            if winner == -1:
+                winner = actor
+            if winner == actor:
+                round_res = 1
+            else:
+                round_res = 2*max_sim_steps
+        else:
+            round_res = self.children[selected_child_i].iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
+        
         self.visits += 1
-        self.avg_score = (self.avg_score * (self.visits - 1) + child_res) / self.visits
-        return child_res + 1
+        self.avg_score = (self.avg_score * (self.visits - 1) + round_res) / self.visits
+        return round_res + 1
