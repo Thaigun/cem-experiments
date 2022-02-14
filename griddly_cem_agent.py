@@ -44,15 +44,6 @@ def find_alive_players(wrapped_env):
     return [player_id for player_id in range(1, wrapped_env.player_count + 1) if wrapped_env.get_available_actions(player_id)]
 
 
-# Returns the player_id of the player who has won.
-def find_winner(env, info):
-    if 'PlayerResults' in info:
-        for plr, status in info['PlayerResults'].items():
-            if status == 'Win':
-                return int(plr)
-    return -1
-
-
 class EnvHashWrapper():
     # This is a bit dangerous, but the env that is given to the constructor must not be stepped.
     # If we can find a way to not lose too much performance by cloning it here in the constructor, that would be perfect.
@@ -119,16 +110,8 @@ class CEM():
         self.agent_confs = agent_confs
 
         # List all possible actions in the game
-        self.action_spaces = [[] for _ in range(self.player_count)] 
-        # Include the idling action
-        for player_i in range(self.player_count):
-            player_i_actions = self.agent_confs[player_i]['Actions']
-            if 'idle' in player_i_actions:
-                self.action_spaces[player_i].append((0,0))
-            for action_type_index, action_name in enumerate(env.action_names):
-                if action_name in player_i_actions:
-                    for action_id in range(1, env.num_action_ids[action_name]):
-                        self.action_spaces[player_i].append((action_type_index, action_id))
+        self.action_spaces = env_util.build_action_spaces(env, agent_confs)
+
         # Will contain the mapping from state hashes to states
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
 
@@ -166,13 +149,6 @@ class CEM():
         return random.choice(best_actions)
 
 
-    # Builds the action that can be passed to the Griddly environment
-    def build_action(self, action, player_id):
-        built_action = [[0,0] for _ in range(self.player_count)]
-        built_action[player_id-1] = list(action)
-        return built_action
-
-
     @lru_cache(maxsize=5000)
     def calc_pd_s_a(self, env, player_id, action):
         # Build it lazily
@@ -190,9 +166,9 @@ class CEM():
 
         result = {}
         for _ in range(self.samples):
-            clone_env, obs, rew, env_done, info = env.step(self.build_action(action, player_id))
+            clone_env, obs, rew, env_done, info = env.step(env_util.build_action(action, self.player_count, player_id))
             if (env_done):
-                game_winner = find_winner(clone_env, info)
+                game_winner = env_util.find_winner(info)
                 next_env = GameEndState(game_winner)
             else:
                 next_env = clone_env
