@@ -148,6 +148,20 @@ Actions:
           Object: [avatar, star]
           Commands:
             - cascade: _dest
+      - Src:
+          Object: star
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: _empty
+      - Src:
+          Object: star
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: [avatar, star]
+          Commands:
+            - cascade: _dest
 
   - Name: rotate
     InputMapping:
