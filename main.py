@@ -10,6 +10,7 @@ import policies
 if __name__ == '__main__':
     USE_CONF = 'collector'
     configuration.activate_config(USE_CONF)
+    # configuration.set_visualise_all(True)
     conf_obj = configuration.active_config
 
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -30,7 +31,7 @@ if __name__ == '__main__':
 
     cem_agent_conf = [agent_conf for agent_conf in conf_obj['Agents'] if agent_conf['Policy'] == policies.maximise_cem_policy]
     cem = CEM(env, conf_obj['Agents']) if cem_agent_conf else None
-    # env.render(mode='human', observer='global')
+    env.render(mode='human', observer='global')
 
     done = False
     steps = 0
@@ -51,7 +52,7 @@ if __name__ == '__main__':
         print(player_name, 'chose action', action_desc)
         obs, rew, done, info = env.step(full_action)
         agent_in_turn = agent_in_turn % env.player_count + 1
-        # env.render(mode='human', observer='global')
+        env.render(mode='human', observer='global')
         steps += 1
 
     print('Game finished after', steps, 'steps')

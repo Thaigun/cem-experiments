@@ -4,6 +4,7 @@ import policies
 active_config = None
 verbose_calculation = False
 health_performance_consistency = True
+visualise_all = False
 
 def activate_config(conf_name):
     global active_config
@@ -30,3 +31,9 @@ def set_verbose_calculation(verbose):
 def set_health_performance_consistency(consistency):
     global health_performance_consistency
     health_performance_consistency = consistency
+
+
+def set_visualise_all(visualise):
+    global visualise_all
+    visualise_all = visualise
+    
