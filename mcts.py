@@ -2,11 +2,43 @@ from math import log, sqrt
 import random
 import env_util
 import configuration
+import numpy as np
 
 
-SELECTION_EPSILON = 0.01
-SCORE_EPSILON = 0.01
-EXPLORATION_FACTOR = 500
+# Scores this close to each other will be considered equal.
+SCORE_EPSILON = 0.1
+# How much to weigh exploration compared to exploitation.
+EXPLORATION_WEIGHT = 4
+# How quickly we want to announce a score to be good or bad. Higher the value, the more unconfident we are.
+SCORE_UNCONFIDENCE = 12.0
+# Do we just skip the other agents' actions or not?
+SKIP_OPPONENTS = True
+
+
+class MCTS:
+    def __init__(self, env, actor, action_spaces):
+        self.root = Node()
+        self.env = env.clone()
+        self.actor = actor
+        self.action_spaces = action_spaces
+        # Variance and standard deviation of all simulation results
+        self._variance = 0.0
+        self.std_dev = 0.0
+
+    def iterate(self):
+        previous_avg_score = self.avg_score
+        result = self.root.iterate(self, self.env, self.actor, self.actor, self.action_spaces, is_root=True)
+        # Update the variance incrementally
+        self._variance = (self.iteration_count - 2) / (self.iteration_count - 1) * self._variance + (1 / self.iteration_count) * (result - previous_avg_score)**2
+        self.std_dev = sqrt(self._variance)
+
+    @property
+    def avg_score(self):
+        return self.root.avg_score
+
+    @property
+    def iteration_count(self):
+        return self.root.visits
 
 
 class Node:
@@ -16,23 +48,19 @@ class Node:
         self.avg_score = 0
 
 
-    def iterate(self, env, actor, player_in_turn, action_spaces, total_iter_count=None, max_sim_steps=10000, is_root=False):
-        if total_iter_count == None and not is_root:
-            raise Exception('total_iter_count must be specified for non-root nodes')
-        if is_root:
-            total_iter_count = self.visits
-
+    def iterate(self, mcts, env, actor, player_in_turn, action_spaces, max_sim_steps=10000, is_root=False):
+        # If this is a leaf node, simulate the game
         if self.visits == 0 and not is_root:
             round_result = self.simulate(env, player_in_turn, action_spaces, max_sim_steps)
         else:
             # Select children until a leaf node is reached (leaf is any node without children)
             if len(self.children) < len(action_spaces[player_in_turn-1]):
-                next_agent_id = player_in_turn % env.player_count + 1
+                next_agent_id = player_in_turn % env.player_count + 1 if not SKIP_OPPONENTS else actor
                 self.children.append(Node() if next_agent_id == actor else OpponentNode())
                 selected_child_i = len(self.children) - 1
             else:
                 # Select the best child
-                selected_child_i = self.select_child(total_iter_count)
+                selected_child_i = self.select_child()
             
             selected_child = self.children[selected_child_i]
             action = action_spaces[player_in_turn-1][selected_child_i]
@@ -42,6 +70,7 @@ class Node:
                 env.render(mode='human', observer='global')
             
             if done:
+                selected_child.visits += 1
                 winner = env_util.find_winner(info)
                 if winner == -1:
                     winner = actor
@@ -51,18 +80,36 @@ class Node:
                     round_result = 2*max_sim_steps
             # Update the average score and backpropagate the result
             else:
-                round_result = selected_child.iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
+                next_agent_id = player_in_turn % env.player_count + 1 if not SKIP_OPPONENTS else actor
+                round_result = selected_child.iterate(env, actor, next_agent_id, action_spaces, max_sim_steps-1, is_root=False)
 
         self.visits += 1
         self.avg_score = (self.avg_score * (self.visits - 1) + round_result) / self.visits
         return round_result + 1
 
 
-    def select_child(self, total_iter_count):
-        child_selection_scores = list(map(lambda child: child.calculate_selection_score(total_iter_count), self.children))
-        best_selection_score = max(child_selection_scores)
-        best_children_idx = [i for i, score in enumerate(child_selection_scores) if abs(score-best_selection_score) < SELECTION_EPSILON]
-        return random.choice(best_children_idx)
+    def select_child(self):
+        assert(self.visits > 0)
+        log_parent_visits = log(self.visits)
+        children_scores_arr = np.array([child.avg_score for child in self.children])
+        score_average = children_scores_arr.mean()
+        score_stdev = children_scores_arr.std()
+
+        def sigmoid(val):
+            return 1 / (1 + np.exp(-val))
+
+        # Select the best child
+        def child_score(child):
+            # Exploration-exploitation trade-off
+            #score_confidence = child.visits / (child.visits + SCORE_UNCONFIDENCE)
+            stds_from_mean = (child.avg_score - score_average) / score_stdev
+            #exploitation = sigmoid(-stds_from_mean * score_confidence)
+            exploitation = sigmoid(-stds_from_mean)
+            exploration = EXPLORATION_WEIGHT * sqrt(log_parent_visits / child.visits)
+            return exploitation + exploration
+
+        best_child = max(self.children, key=child_score)
+        return self.children.index(best_child)
 
 
     def best_child_idx(self):
@@ -83,6 +130,7 @@ class Node:
     def simulate(self, env, player_in_turn, action_spaces, max_sim_steps):
         step_count = 0
         current_agent = player_in_turn
+        result = max_sim_steps
         # Simulate the game
         for _ in range(max_sim_steps):
             # Select a random action
@@ -91,25 +139,18 @@ class Node:
             if configuration.visualise_all:
                 env.render(mode='human', observer='global')
             step_count += 1
-            current_agent = current_agent % env.player_count + 1
+            if not SKIP_OPPONENTS:
+                current_agent = current_agent % env.player_count + 1
             if done:
                 winner = env_util.find_winner(info)
                 # If the environment is done but there is no winner, we assume it was a good result
                 if winner == -1:
                     winner = player_in_turn
                 if winner == player_in_turn:
-                    return step_count
+                    result = step_count
                 else:
-                    return 2*step_count
-        return 2*step_count
-
-
-    def calculate_selection_score(self, total_iters):
-        # Exploration-exploitation trade-off
-        exploitation = -self.avg_score
-        exploration_raw = sqrt(log(total_iters) / self.visits)
-        exploration = EXPLORATION_FACTOR * exploration_raw
-        return exploitation + exploration
+                    result = 2*step_count
+        return result
 
 
 class OpponentNode(Node):

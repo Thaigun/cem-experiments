@@ -23,7 +23,7 @@ Environment:
       Width: 7
   Variables:
     - Name: star_count
-      InitialValue: 8
+      InitialValue: 1
       PerPlayer: false
   Termination:
     End:
@@ -31,11 +31,11 @@ Environment:
   Levels:
     - |
       w w w w w w w w w 
-      w . . . . . . . w
-      w s . s . s . s w
-      w . . . . . . . w
-      w s . s . s . s w
       w . . . P2 . . . w
+      w . . . s . . . w
+      w . . . . . . . w
+      w . . . . . . . w
+      w . . . . . . . w
       w . . . . . . . w
       w . . . P1 . . . w
       w w w w w w w w w
