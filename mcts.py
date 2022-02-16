@@ -6,39 +6,56 @@ import numpy as np
 
 
 # Scores this close to each other will be considered equal.
-SCORE_EPSILON = 0.1
+SCORE_EPSILON = 0.005
 # How much to weigh exploration compared to exploitation.
-EXPLORATION_WEIGHT = 4
-# How quickly we want to announce a score to be good or bad. Higher the value, the more unconfident we are.
-SCORE_UNCONFIDENCE = 12.0
+EXPLORATION_WEIGHT = sqrt(1.5)
 # Do we just skip the other agents' actions or not?
 SKIP_OPPONENTS = True
-
+# How steep should the sigmoid function be?
+SIGMOID_K = 2
 
 class MCTS:
-    def __init__(self, env, actor, action_spaces):
+    def __init__(self, env, actor, action_spaces, max_sim_steps=20000):
         self.root = Node()
-        self.env = env.clone()
+        self.env = env
         self.actor = actor
         self.action_spaces = action_spaces
+        self.iteration_count = 0
+        self.max_sim_steps = max_sim_steps
         # Variance and standard deviation of all simulation results
         self._variance = 0.0
         self.std_dev = 0.0
+        self.avg_raw_result = 0.0
+        # Warning: this is updated only in the beginning and cannot be trusted furthermore.
+        self._raw_results = np.array([], np.int32)
 
     def iterate(self):
-        previous_avg_score = self.avg_score
-        result = self.root.iterate(self, self.env, self.actor, self.actor, self.action_spaces, is_root=True)
-        # Update the variance incrementally
-        self._variance = (self.iteration_count - 2) / (self.iteration_count - 1) * self._variance + (1 / self.iteration_count) * (result - previous_avg_score)**2
+        self.root.iterate(self, self.env.clone(), self.actor, self.actor, self.action_spaces, depth=0, max_sim_steps=self.max_sim_steps, is_root=True)
+
+    def normalize_result(self, result_raw):
+        # If this is the first result, it's the average.
+        if self.iteration_count == 0 or self.std_dev == 0:
+            return 0.5
+
+        def sigmoid(val):
+            return 1 / (1 + np.exp(-val*SIGMOID_K))
+
+        # How many standard deviations from the mean is this result?
+        stds_from_mean = (result_raw - self.avg_raw_result) / self.std_dev
+        return sigmoid(-stds_from_mean)
+
+    def update_averages(self, raw_result):
+        self.avg_raw_result = (self.avg_raw_result * self.iteration_count + raw_result) / (self.iteration_count + 1)
+        self.iteration_count += 1
+        if self.iteration_count < 10:
+            self._raw_results = np.append(self._raw_results, [raw_result]) # TODO: This is only needed during the first few iterations
+            self._variance = np.var(self._raw_results)
+            self.std_dev = np.std(self._raw_results)
+            return
+
+        # https://math.stackexchange.com/questions/102978/incremental-computation-of-standard-deviation
+        self._variance = (self.iteration_count - 2) / (self.iteration_count - 1) * self._variance + (1 / self.iteration_count) * (raw_result - self.avg_raw_result)**2
         self.std_dev = sqrt(self._variance)
-
-    @property
-    def avg_score(self):
-        return self.root.avg_score
-
-    @property
-    def iteration_count(self):
-        return self.root.visits
 
 
 class Node:
@@ -48,10 +65,10 @@ class Node:
         self.avg_score = 0
 
 
-    def iterate(self, mcts, env, actor, player_in_turn, action_spaces, max_sim_steps=10000, is_root=False):
+    def iterate(self, mcts, env, actor, player_in_turn, action_spaces, depth, max_sim_steps=10000, is_root=False):
         # If this is a leaf node, simulate the game
         if self.visits == 0 and not is_root:
-            round_result = self.simulate(env, player_in_turn, action_spaces, max_sim_steps)
+            round_result = self.simulate(mcts, env, player_in_turn, action_spaces, depth, max_sim_steps)
         else:
             # Select children until a leaf node is reached (leaf is any node without children)
             if len(self.children) < len(action_spaces[player_in_turn-1]):
@@ -64,51 +81,45 @@ class Node:
             
             selected_child = self.children[selected_child_i]
             action = action_spaces[player_in_turn-1][selected_child_i]
-            # TODO: What if the game ends here?
             obs, reward, done, info = env.step(env_util.build_action(action, len(action_spaces), player_in_turn))
             if configuration.visualise_all:
                 env.render(mode='human', observer='global')
             
             if done:
-                selected_child.visits += 1
                 winner = env_util.find_winner(info)
                 if winner == -1:
                     winner = actor
                 if winner == actor:
-                    round_result = 1
+                    round_result = mcts.normalize_result(depth+1)
                 else:
-                    round_result = 2*max_sim_steps
+                    round_result = 0
+                selected_child.update_with_result(round_result)
             # Update the average score and backpropagate the result
             else:
                 next_agent_id = player_in_turn % env.player_count + 1 if not SKIP_OPPONENTS else actor
-                round_result = selected_child.iterate(env, actor, next_agent_id, action_spaces, max_sim_steps-1, is_root=False)
+                round_result = selected_child.iterate(mcts, env, actor, next_agent_id, action_spaces, depth+1, max_sim_steps, is_root=False)
 
+        self.update_with_result(round_result)
+        return round_result
+
+
+    def update_with_result(self, score):
         self.visits += 1
-        self.avg_score = (self.avg_score * (self.visits - 1) + round_result) / self.visits
-        return round_result + 1
+        self.avg_score = (self.avg_score * (self.visits - 1) + score) / self.visits
 
 
     def select_child(self):
         assert(self.visits > 0)
         log_parent_visits = log(self.visits)
-        children_scores_arr = np.array([child.avg_score for child in self.children])
-        score_average = children_scores_arr.mean()
-        score_stdev = children_scores_arr.std()
-
-        def sigmoid(val):
-            return 1 / (1 + np.exp(-val))
 
         # Select the best child
-        def child_score(child):
+        def uct(child):
             # Exploration-exploitation trade-off
-            #score_confidence = child.visits / (child.visits + SCORE_UNCONFIDENCE)
-            stds_from_mean = (child.avg_score - score_average) / score_stdev
-            #exploitation = sigmoid(-stds_from_mean * score_confidence)
-            exploitation = sigmoid(-stds_from_mean)
+            exploitation = child.avg_score
             exploration = EXPLORATION_WEIGHT * sqrt(log_parent_visits / child.visits)
             return exploitation + exploration
 
-        best_child = max(self.children, key=child_score)
+        best_child = max(self.children, key=uct)
         return self.children.index(best_child)
 
 
@@ -126,9 +137,8 @@ class Node:
 
 
     # Simulate the game until the end with random moves.
-    # TODO: the steps taken to get down to this level should be counted in the score.
-    def simulate(self, env, player_in_turn, action_spaces, max_sim_steps):
-        step_count = 0
+    def simulate(self, mcts, env, player_in_turn, action_spaces, depth, max_sim_steps):
+        step_count = depth
         current_agent = player_in_turn
         result = max_sim_steps
         # Simulate the game
@@ -150,11 +160,14 @@ class Node:
                     result = step_count
                 else:
                     result = 2*step_count
-        return result
+                break
+        normalized_res = mcts.normalize_result(result)
+        mcts.update_averages(result)
+        return normalized_res
 
 
 class OpponentNode(Node):
-    def iterate(self, env, actor, player_in_turn, action_spaces, total_iter_count, max_sim_steps=10000, is_root=False):
+    def iterate(self, mcts, env, actor, player_in_turn, action_spaces, depth, max_sim_steps=10000, is_root=False):
         '''
         Opponent nodes are different in that they do not try to find the best actions.
         Instead, they choose actions uniformly.
@@ -180,7 +193,7 @@ class OpponentNode(Node):
             else:
                 round_res = 2*max_sim_steps
         else:
-            round_res = self.children[selected_child_i].iterate(env, actor, player_in_turn % env.player_count + 1, action_spaces, total_iter_count, max_sim_steps-1, is_root=False)
+            round_res = self.children[selected_child_i].iterate(mcts, env, actor, player_in_turn % env.player_count + 1, action_spaces, depth=depth+1, max_sim_steps=max_sim_steps-1, is_root=False)
         
         self.visits += 1
         self.avg_score = (self.avg_score * (self.visits - 1) + round_res) / self.visits
