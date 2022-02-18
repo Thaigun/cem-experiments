@@ -5,12 +5,13 @@ from griddly_cem_agent import CEM
 from random import choices
 import env_util
 import policies
+from multiprocessing import Pool, Process
 
 
-if __name__ == '__main__':
+def run_game():
     USE_CONF = 'collector'
     configuration.activate_config(USE_CONF)
-    # configuration.set_visualise_all(True)
+    #configuration.set_visualise_all(True)
     conf_obj = configuration.active_config
 
     current_path = os.path.dirname(os.path.realpath(__file__))
@@ -49,10 +50,21 @@ if __name__ == '__main__':
         full_action[agent_in_turn-1] = list(action)
         action_desc = env_util.action_to_str(env, action)
         player_name = env_util.agent_id_to_name(agent_confs, agent_in_turn)
-        print(player_name, 'chose action', action_desc)
+        #print(player_name, 'chose action', action_desc)
         obs, rew, done, info = env.step(full_action)
         agent_in_turn = agent_in_turn % env.player_count + 1
         env.render(mode='human', observer='global')
         steps += 1
-
     print('Game finished after', steps, 'steps')
+
+
+if __name__ == '__main__':
+    processes = []
+    for _ in range(1):
+        p = Process(target=run_game)
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
+    
