@@ -31,10 +31,10 @@ Environment:
   Levels:
     - |
       w w w w w w w w w 
-      w . . . P2 . . . w
+      w . . . . . . . w
       w . . . s . . . w
       w . . . . . . . w
-      w . . . . . . . w
+      w . . . P2 . . . w
       w . . . . . . . w
       w . . . . . . . w
       w . . . P1 . . . w
@@ -61,22 +61,6 @@ Actions:
           OrientationVector: [0, 1]
           VectorToDest: [0, 1]
           Description: 'down'
-        5:
-          OrientationVector: [0, -1]
-          VectorToDest: [-1, -1]
-          Description: 'nw'
-        6:
-          OrientationVector: [0, -1]
-          VectorToDest: [1, -1]
-          Description: 'ne'
-        7:
-          OrientationVector: [0, 1]
-          VectorToDest: [1, 1]
-          Description: 'se'
-        8:
-          OrientationVector: [0, 1]
-          VectorToDest: [-1, 1]
-          Description: 'sw'
     Behaviours:
       - Src:
           Object: avatar
@@ -100,34 +84,18 @@ Actions:
     InputMapping:
       Inputs:
         1:
-          OrientationVector: [-1, 0]
-          VectorToDest: [-1, 0]
-          Description: 'left'
-        2:
-          OrientationVector: [0, -1]
-          VectorToDest: [0, -1]
-          Description: 'up'
-        3:
-          OrientationVector: [1, 0]
-          VectorToDest: [1, 0]
-          Description: 'right'
-        4:
-          OrientationVector: [0, 1]
-          VectorToDest: [0, 1]
-          Description: 'down'
-        5:
           OrientationVector: [0, -1]
           VectorToDest: [-1, -1]
           Description: 'nw'
-        6:
+        2:
           OrientationVector: [0, -1]
           VectorToDest: [1, -1]
           Description: 'ne'
-        7:
+        3:
           OrientationVector: [0, 1]
           VectorToDest: [1, 1]
           Description: 'se'
-        8:
+        4:
           OrientationVector: [0, 1]
           VectorToDest: [-1, 1]
           Description: 'sw'
