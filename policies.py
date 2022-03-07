@@ -1,12 +1,14 @@
 import configuration
 from mcts import MCTS
 import env_util
+from datetime import timedelta, datetime
 
 
 def uniform_policy(env, cem, player_id):
     action_probs = {}
-    for action in cem.action_spaces[player_id-1]:
-        action_probs[action] = 1.0 / len(cem.action_spaces[player_id-1])
+    action_spaces = cem.action_spaces if cem is not None else env_util.build_action_spaces(env, configuration.active_config['Agents'])
+    for action in action_spaces[player_id-1]:
+        action_probs[action] = 1.0 / len(action_spaces[player_id-1])
     return action_probs
 
 
@@ -24,10 +26,11 @@ def mcts_policy(env, cem, player_in_turn):
     iter_count = player_conf['MCTSIterations'] if 'MCTSIterations' in player_conf else 30000
     action_spaces = env_util.build_action_spaces(env, configuration.active_config['Agents'])
     mcts = MCTS(env, player_in_turn, action_spaces)
+    now = datetime.now()
     
-    for i in range(iter_count):
-        if i % 1000 == 0:
-            print('Iteration: ' + str(i))
+    while datetime.now() - now < timedelta(seconds=2):
+        # if i % 1000 == 0:
+        #     print('Iteration: ' + str(i))
         mcts.iterate()
 
     action_idx = mcts.root.best_child_idx()

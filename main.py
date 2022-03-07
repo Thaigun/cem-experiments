@@ -6,6 +6,12 @@ from random import choices
 import env_util
 import policies
 from multiprocessing import Pool, Process
+from level_generator import SimpleLevelGenerator
+import time
+from datetime import datetime
+
+
+PARALLEL = False
 
 
 def run_game():
@@ -13,6 +19,15 @@ def run_game():
     configuration.activate_config(USE_CONF)
     #configuration.set_visualise_all(True)
     conf_obj = configuration.active_config
+
+    map_config = {
+        'width': 8,
+        'height': 8,
+        'player_count': 2,
+        'bounding_obj_char': 'w'
+    }
+    obj_char_to_amount = {'w': 10, 's': 15}
+    level_generator = SimpleLevelGenerator(map_config, obj_char_to_amount)
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
@@ -22,7 +37,8 @@ def run_game():
                      image_path='./art',
                      level=0)
 
-    env.reset()
+    env.reset(level_string=level_generator.generate())
+    print(level_generator.level)
 
     agent_in_turn = 1
     agent_confs = conf_obj['Agents']
@@ -34,8 +50,11 @@ def run_game():
     cem = CEM(env, conf_obj['Agents']) if cem_agent_conf else None
     env.render(mode='human', observer='global')
 
+    now = datetime.now()
+
     done = False
     steps = 0
+    cumulative_reward = [0 for _ in range(env.player_count)]
     while not done:
         current_policy = agent_policies[agent_in_turn]
         action_probs = current_policy(env, cem, agent_in_turn)
@@ -52,19 +71,63 @@ def run_game():
         player_name = env_util.agent_id_to_name(agent_confs, agent_in_turn)
         #print(player_name, 'chose action', action_desc)
         obs, rew, done, info = env.step(full_action)
+        for rew_i, reward in enumerate(rew):
+            cumulative_reward[rew_i] += reward
         agent_in_turn = agent_in_turn % env.player_count + 1
         env.render(mode='human', observer='global')
         steps += 1
     print('Game finished after', steps, 'steps')
+    print('Rewards: ', cumulative_reward)
+    print('Time taken: ', datetime.now() - now)
+
+
+def test_game():
+    USE_CONF = 'collector'
+    configuration.activate_config(USE_CONF)
+    conf_obj = configuration.active_config
+
+    map_config = {
+        'width': 8,
+        'height': 8,
+        'player_count': 2,
+        'bounding_obj_char': 'w'
+    }
+    obj_char_to_amount = {'w': 10, 's': 15}
+    level_generator = SimpleLevelGenerator(map_config, obj_char_to_amount)
+
+    current_path = os.path.dirname(os.path.realpath(__file__))
+    env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
+                     shader_path='shaders',
+                     player_observer_type=gd.ObserverType.VECTOR,
+                     global_observer_type=gd.ObserverType.SPRITE_2D,
+                     image_path='./art',
+                     level=0)
+
+    env.reset(level_string=level_generator.generate())
+
+    done = False
+    reward = [0,0]
+    while not done:
+        action = env.action_space.sample()
+        obs, rew, done, info = env.step(action)
+        
+        env.render(mode='human', observer='global')
+        time.sleep(0.3)
+        reward[0] += rew[0]
+        reward[1] += rew[1]
 
 
 if __name__ == '__main__':
-    processes = []
-    for _ in range(1):
-        p = Process(target=run_game)
-        p.start()
-        processes.append(p)
+    if not PARALLEL:
+        for _ in range(6):
+            run_game()
+    else:
+        processes = []
+        for _ in range(6):
+            p = Process(target=run_game)
+            p.start()
+            processes.append(p)
 
-    for p in processes:
-        p.join()
+        for p in processes:
+            p.join()
     

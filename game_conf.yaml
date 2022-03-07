@@ -12,7 +12,7 @@ collector:
       Keys: ["awdsqexz"]
     - PlayerId: 2
       Name: "Blocker"
-      Policy: "stupid_move_policy"
+      Policy: "maximise_cem_policy"
       AssumedPolicy: "uniform_policy"
       EmpowermentPairs:
         - Actor: 2

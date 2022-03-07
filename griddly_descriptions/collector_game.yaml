@@ -23,11 +23,12 @@ Environment:
       Width: 7
   Variables:
     - Name: star_count
-      InitialValue: 1
+      InitialValue: 15
       PerPlayer: false
   Termination:
     End:
       - eq: [star_count, 0]
+      - eq: [_steps, 40]
   Levels:
     - |
       w w w w w w w w w 
@@ -74,6 +75,7 @@ Actions:
           Commands:
             - mov: _dest
             - rot: _dir
+            - reward: 1
         Dst:
           Object: star
           Commands:
