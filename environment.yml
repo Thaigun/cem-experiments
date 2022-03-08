@@ -7,7 +7,9 @@ dependencies:
   - pyyaml
   - pip
   - pip:
+    - firebase-admin
     - gym==0.21.0
     - griddly
     - pyglet
     - pygame
+    - python-dotenv

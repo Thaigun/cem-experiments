@@ -23,14 +23,12 @@ def maximise_cem_policy(env, cem, player_in_turn):
 
 def mcts_policy(env, cem, player_in_turn):
     player_conf = next(p for p in configuration.active_config['Agents'] if p['PlayerId'] == player_in_turn)
-    iter_count = player_conf['MCTSIterations'] if 'MCTSIterations' in player_conf else 30000
+    time_limit = player_conf['MCTSTimeLimit'] if 'MCTSTimeLimit' in player_conf else 2
     action_spaces = env_util.build_action_spaces(env, configuration.active_config['Agents'])
     mcts = MCTS(env, player_in_turn, action_spaces)
     now = datetime.now()
     
-    while datetime.now() - now < timedelta(seconds=2):
-        # if i % 1000 == 0:
-        #     print('Iteration: ' + str(i))
+    while datetime.now() - now < timedelta(seconds=time_limit):
         mcts.iterate()
 
     action_idx = mcts.root.best_child_idx()

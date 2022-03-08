@@ -6,7 +6,7 @@ collector:
     - PlayerId: 1
       Name: Player
       Policy: "mcts_policy"
-      MCTSIterations: 4000
+      MCTSTimeLimit: 2
       AssumedPolicy: "uniform_policy"
       Actions: ["move"]
       Keys: ["awdsqexz"]

@@ -2,14 +2,24 @@ import yaml
 import policies
 
 active_config = None
+active_config_name = ""
 verbose_calculation = False
 health_performance_consistency = True
 visualise_all = False
 
-def activate_config(conf_name):
-    global active_config
+
+def load_pure_conf():
+    global active_config_name
     with open('game_conf.yaml', 'r') as f:
-        active_config = yaml.safe_load(f)[conf_name]
+        return yaml.safe_load(f)[active_config_name]
+
+
+def activate_config(conf_name):
+    global active_config_name
+    global active_config
+
+    active_config_name = conf_name
+    active_config = load_pure_conf()
 
     # Replace the policy values with functions of the same name
     for agent_conf in active_config['Agents']:
@@ -21,7 +31,7 @@ def activate_config(conf_name):
     if 'HealthPerformanceConsistency' in active_config:
         global health_performance_consistency
         health_performance_consistency = active_config['HealthPerformanceConsistency']
-    
+
 
 def set_verbose_calculation(verbose):
     global verbose_calculation
