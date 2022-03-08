@@ -89,8 +89,6 @@ def run_game():
     
 
 if __name__ == '__main__':
-
-
     if PARALLEL == 1:
         for _ in range(6):
             run_game()

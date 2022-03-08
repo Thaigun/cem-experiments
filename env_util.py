@@ -18,9 +18,7 @@ def find_winner(info):
 
 
 def build_action_spaces(env, agent_confs):
-    # List all possible actions in the game
     action_spaces = [[] for _ in range(env.player_count)] 
-    # Include the idling action
     for player_i in range(env.player_count):
         player_i_actions = agent_confs[player_i]['Actions']
         if 'idle' in player_i_actions:

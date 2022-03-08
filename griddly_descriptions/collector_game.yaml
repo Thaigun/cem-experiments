@@ -43,7 +43,63 @@ Environment:
 
 # Available action options 
 Actions:
-  - Name: move
+  - Name: lateral_move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+          VectorToDest: [-1, 0]
+          Description: 'left'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [0, -1]
+          Description: 'up'
+        3:
+          OrientationVector: [1, 0]
+          VectorToDest: [1, 0]
+          Description: 'right'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [0, 1]
+          Description: 'down'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+
+  - Name: diagonal_move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [0, -1]
+          VectorToDest: [-1, -1]
+          Description: 'nw'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [1, -1]
+          Description: 'ne'
+        3:
+          OrientationVector: [0, 1]
+          VectorToDest: [1, 1]
+          Description: 'se'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [-1, 1]
+          Description: 'sw'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+
+  - Name: lateral_collect_move
     InputMapping:
       Inputs:
         1:
@@ -81,8 +137,100 @@ Actions:
           Commands:
             - remove: true
             - decr: star_count
+            - reward: 1
 
-  - Name: push_move
+  - Name: diagonal_collect_move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [0, -1]
+          VectorToDest: [-1, -1]
+          Description: 'nw'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [1, -1]
+          Description: 'ne'
+        3:
+          OrientationVector: [0, 1]
+          VectorToDest: [1, 1]
+          Description: 'se'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [-1, 1]
+          Description: 'sw'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+            - reward: 1
+        Dst:
+          Object: star
+          Commands:
+            - remove: true
+            - decr: star_count
+            - reward: 1
+
+  - Name: lateral_push_move
+    InputMapping:
+      Inputs:
+        1:
+          OrientationVector: [-1, 0]
+          VectorToDest: [-1, 0]
+          Description: 'left'
+        2:
+          OrientationVector: [0, -1]
+          VectorToDest: [0, -1]
+          Description: 'up'
+        3:
+          OrientationVector: [1, 0]
+          VectorToDest: [1, 0]
+          Description: 'right'
+        4:
+          OrientationVector: [0, 1]
+          VectorToDest: [0, 1]
+          Description: 'down'
+    Behaviours:
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: _empty
+      - Src:
+          Object: avatar
+          Commands:
+            - mov: _dest
+            - rot: _dir
+        Dst:
+          Object: [avatar, star]
+          Commands:
+            - cascade: _dest
+      - Src:
+          Object: star
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: _empty
+      - Src:
+          Object: star
+          Commands:
+            - mov: _dest
+        Dst:
+          Object: [avatar, star]
+          Commands:
+            - cascade: _dest
+
+  - Name: diagonal_push_move
     InputMapping:
       Inputs:
         1:
@@ -133,6 +281,39 @@ Actions:
           Commands:
             - cascade: _dest
 
+  - Name: collect
+    InputMapping:
+      Inputs:
+        1:
+          VectorToDest: [0, 0]
+          Description: 'here'
+    Behaviours:
+      - Src:
+          Object: avatar
+        Dst:
+          Object: star
+          Commands:
+            - remove: true
+            - reward: 1
+            - decr: star_count
+
+  - Name: collect_from_ahead
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, -1]
+          Description: 'ahead'
+    Behaviours:
+      - Src:
+          Object: avatar
+        Dst:
+          Object: star
+          Commands:
+            - remove: true
+            - reward: 1
+            - decr: star_count
+
   - Name: rotate
     InputMapping:
       Inputs:
@@ -178,6 +359,7 @@ Objects:
       Sprite2D:
         - Image: Wall.png
   - Name: avatar
+    Z: 1
     MapCharacter: P
     Variables:
       - Name: health
@@ -193,6 +375,7 @@ Objects:
         - Image: Companion.png
         - Image: Enemy.png
   - Name: star
+    Z: 2
     MapCharacter: s
     Observers:
       Sprite2D:

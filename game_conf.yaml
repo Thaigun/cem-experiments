@@ -8,7 +8,7 @@ collector:
       Policy: "mcts_policy"
       MCTSTimeLimit: 2
       AssumedPolicy: "uniform_policy"
-      Actions: ["move"]
+      Actions: ["lateral_collect_move"]
       Keys: ["awdsqexz"]
     - PlayerId: 2
       Name: "Blocker"
@@ -24,7 +24,7 @@ collector:
         - Actor: 1
           Perceptor: 1
           Weight: -1.0
-      Actions: ["push_move"]
+      Actions: ["diagonal_push_move"]
 
 threeway:
   GriddlyDescription: "testbed1.yaml"
