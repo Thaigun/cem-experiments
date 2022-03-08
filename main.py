@@ -21,14 +21,7 @@ def run_game():
     #configuration.set_visualise_all(True)
     conf_obj = configuration.active_config
 
-    map_config = {
-        'width': 8,
-        'height': 8,
-        'player_count': 2,
-        'bounding_obj_char': 'w'
-    }
-    obj_char_to_amount = {'w': 10, 's': 15}
-    level_generator = SimpleLevelGenerator(map_config, obj_char_to_amount)
+
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
@@ -38,6 +31,14 @@ def run_game():
                      image_path='./art',
                      level=0)
 
+    map_config = {
+        'width': 8,
+        'height': 8,
+        'player_count': 2,
+        'bounding_obj_char': 'w'
+    }
+    obj_char_to_amount = {'w': 10, 's': 15}
+    level_generator = SimpleLevelGenerator(map_config, obj_char_to_amount)
     env.reset(level_string=level_generator.generate())
     print(level_generator.level)
 
