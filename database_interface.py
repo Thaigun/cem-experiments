@@ -9,22 +9,22 @@ class DatabaseInterface:
         try:
             self.firebase_app = firebase_admin.get_app(name)
         except ValueError:
-            config = dotenv_values('.env')
-            options = {
-                'databaseURL': config['FIREBASE_DATABASE_URL']
-            }
-            cred = credentials.Certificate('cert/' + config['FIREBASE_KEY_FILE'])
-            self.firebase_app = firebase_admin.initialize_app(cred, options, name)
+            self.initialize_firebase_app(name)
         self.database = db.reference('/experiments', self.firebase_app)
 
-    
+
+    def initialize_firebase_app(self, name):
+        config = dotenv_values('.env')
+        options = {
+            'databaseURL': config['FIREBASE_DATABASE_URL']
+        }
+        cred = credentials.Certificate('cert/' + config['FIREBASE_KEY_FILE'])
+        self.firebase_app = firebase_admin.initialize_app(cred, options, name)
+
+
     def save_new_entry(self, data_entry):
         self.database.push(data_entry)
 
     
     def fetch_all_entries(self):
-        pass
-
-    
-    def fetch_entry_by_id(self, entry_id):
-        pass
+        return self.database.get()

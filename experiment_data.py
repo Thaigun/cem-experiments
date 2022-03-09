@@ -3,25 +3,20 @@ import datetime
 
 class ExperimentData:
     def __init__(self, map, game_conf):
-        self._start_time = datetime.datetime.now()
-        self._map = map
-        self._game_conf = game_conf
-        self._actions = []
-        self._score = []
-
-    def build_data_dict(self):
-        data_dict = {
-            'start_time': str(self._start_time),
-            'map': self._map,
-            'game_conf': self._game_conf,
-            'actions': self._actions,
-            'score': self._score,
-            'end_time': str(datetime.datetime.now())
+        self.data_dict = {
+            'start_time': str(datetime.datetime.now()),
+            'map': map,
+            'game_conf': game_conf,
+            'actions': [],
+            'score': []
         }
-        return data_dict
+
+    def get_data_dict(self):
+        self.data_dict['end_time'] = str(datetime.datetime.now())
+        return self.data_dict
 
     def set_score(self, score):
-        self._score = score
+        self.data_dict['score'] = score
 
     def add_action(self, action):
-        self._actions.append(action)
+        self.data_dict['actions'].append(action)

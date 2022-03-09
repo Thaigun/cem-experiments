@@ -52,7 +52,7 @@ def run_game():
     cem = CEM(env, conf_obj['Agents']) if cem_agent_conf else None
     env.render(mode='human', observer='global')
 
-    experiment_data = ExperimentData(level_generator.level, configuration.load_pure_conf())
+    experiment_data = ExperimentData(level_generator.level, configuration.load_pure_conf(USE_CONF))
 
     now = datetime.now()
 
@@ -86,7 +86,7 @@ def run_game():
     print('Time taken: ', datetime.now() - now)
     experiment_data.set_score(cumulative_reward)
     database_interface = DatabaseInterface('cem-experiments')
-    database_interface.save_new_entry(experiment_data.build_data_dict())
+    database_interface.save_new_entry(experiment_data.get_data_dict())
     
 
 if __name__ == '__main__':

@@ -18,15 +18,18 @@ def find_winner(info):
 
 
 def build_action_spaces(env, agent_confs):
-    action_spaces = [[] for _ in range(env.player_count)] 
-    for player_i in range(env.player_count):
-        player_i_actions = agent_confs[player_i]['Actions']
+    def build_plr_action_space(agent_conf):
+        player_action_space = []
+        player_i_actions = agent_conf['Actions']
         if 'idle' in player_i_actions:
-            action_spaces[player_i].append((0,0))
+            player_action_space.append((0,0))
         for action_type_index, action_name in enumerate(env.action_names):
             if action_name in player_i_actions:
                 for action_id in range(1, env.num_action_ids[action_name]):
-                    action_spaces[player_i].append((action_type_index, action_id))
+                    player_action_space.append((action_type_index, action_id))
+        return player_action_space
+
+    action_spaces = [build_plr_action_space(agent_confs[player_i]) for player_i in range(env.player_count)] 
     return action_spaces
     
 

@@ -45,9 +45,8 @@ def find_alive_players(wrapped_env):
 
 
 class EnvHashWrapper():
-    # This is a bit dangerous, but the env that is given to the constructor must not be stepped.
-    # If we can find a way to not lose too much performance by cloning it here in the constructor, that would be perfect.
     def __init__(self, env):
+        # The environment is very likely going to be stepped. Thus, we don't want to use the original environment here.
         if not env._is_clone:
             raise ValueError('The environment given to EnvHashWrapper must be a clone of an original environment.')
         self._env = env
@@ -108,45 +107,54 @@ class CEM():
         self.samples = samples
         self.player_count = env.player_count
         self.agent_confs = agent_confs
-
-        # List all possible actions in the game
         self.action_spaces = env_util.build_action_spaces(env, agent_confs)
-
-        # Will contain the mapping from state hashes to states
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
 
 
     def cem_action(self, env, player_id, n_step):
-        # Stores the expected empowerment for each empowerment_pair, for each action that can be taken from the current state.
-        # For example: [E[E^P]_{a_t}, E[E^T]_{a_t}, E[E^C]_{a_t}], if we were to calculate three different empowerments E^P, E^T and E^C.
-        # Here's an example of the structure, if there are 3 empowerment pairs (pair 0, pair 1, pair 2) and 3 actions (a0, a1, a2)
-        #                   [ [1.0, 1.5, 2.0], [1.5, 1.2, 1.9], [3.0, 2.5, 1.0] ]  <- example data
-        #                       |    |    |      |    |    |      |    |    |
-        #                       a0   a1   a2     a0   a1   a2     a0   a1   a2    
-        #                     |---pair 0----|  |----pair 1---|  |---pair 2----|
-        expected_empowerments_per_pair = []
+        expected_empowerments_per_pair = self.calculate_expected_empowerments_per_pair(env, player_id, n_step)
+        best_actions = self.find_best_actions(player_id, expected_empowerments_per_pair)
+        return random.choice(best_actions)
 
+
+    def calculate_expected_empowerments_per_pair(self, env, player_id, n_step):
+        '''
+        Returns the expected empowerment for each empowerment_pair, for each action that can be taken from the current state.
+        For example: [E[E^P]_{a_t}, E[E^T]_{a_t}, E[E^C]_{a_t}], if we were to calculate three different empowerments E^P, E^T and E^C.
+        Here's an example of the structure, if there are 3 empowerment pairs (pair 0, pair 1, pair 2) and 3 actions (a0, a1, a2)
+                          [ [1.0, 1.5, 2.0], [1.5, 1.2, 1.9], [3.0, 2.5, 1.0] ]  <- example data
+                              |    |    |      |    |    |      |    |    |
+                              a0   a1   a2     a0   a1   a2     a0   a1   a2    
+                            |---pair 0----|  |----pair 1---|  |---pair 2----|
+        '''
+        expected_empowerments_per_pair = []
         for emp_pair in self.agent_confs[player_id-1]['EmpowermentPairs']:
             expected_empowerments = self.calculate_expected_empowerments(env, player_id, (emp_pair['Actor'], emp_pair['Perceptor']), n_step, True)
             expected_empowerments_per_pair.append(expected_empowerments)
+        return expected_empowerments_per_pair
 
-        best_actions = []
-        best_rewards = []
-        # Find the action index that yields the highest expected empowerment
-        for a in self.action_spaces[player_id-1]:
-            action_reward = 0
-            for emp_pair_i, agent_emp_conf in enumerate(self.agent_confs[player_id-1]['EmpowermentPairs']):
-                action_reward += agent_emp_conf['Weight'] * expected_empowerments_per_pair[emp_pair_i][a]
-            if configuration.verbose_calculation:
-                print(f'Action {env_util.action_to_str(env, a)} has expected reward {action_reward}')
-            if not len(best_rewards) or action_reward >= max(best_rewards) + EPSILON:
-                best_rewards = [action_reward]
-                best_actions = [a]
-            elif action_reward > max(best_rewards) - EPSILON and action_reward < max(best_rewards) + EPSILON:
-                best_rewards.append(action_reward)
-                best_actions.append(a)
         
-        return random.choice(best_actions)
+    def find_best_actions(self, player_id, expected_empowerments_per_pair):
+        best_actions = []
+        best_reward = -1e10
+        for action in self.action_spaces[player_id-1]:
+            empowerment_pair_confs = enumerate(self.agent_confs[player_id-1]['EmpowermentPairs'])
+            action_reward = self.calculate_action_reward(action, empowerment_pair_confs, expected_empowerments_per_pair)
+            if action_reward >= best_reward + EPSILON:
+                best_actions = [action]
+            elif abs(action_reward-best_reward) < EPSILON:
+                best_actions.append(action)
+            best_reward = max(best_reward, action_reward)
+            if configuration.verbose_calculation:
+                print(f'Action {action} has expected reward {action_reward}')
+        return best_actions
+            
+        
+    def calculate_action_reward(self, action, empowerment_pair_confs, expected_empowerments_per_pair):
+        action_reward = 0
+        for emp_pair_i, emp_conf in empowerment_pair_confs:
+            action_reward += emp_conf['Weight'] * expected_empowerments_per_pair[emp_pair_i][action]
+        return action_reward
 
 
     @lru_cache(maxsize=5000)
