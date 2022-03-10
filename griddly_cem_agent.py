@@ -112,9 +112,19 @@ class CEM():
 
 
     def cem_action(self, env, player_id, n_step):
-        expected_empowerments_per_pair = self.calculate_expected_empowerments_per_pair(env, player_id, n_step)
-        best_actions = self.find_best_actions(player_id, expected_empowerments_per_pair)
+        emp_pairs = self.get_emp_pairs(player_id)
+        # I all empowerments are weighted to zero, all actions are equal.
+        all_weights_zero = all([emp_pair['Weight'] == 0 for emp_pair in emp_pairs])
+        if all_weights_zero:
+            best_actions = self.action_spaces[player_id-1]
+        else:
+            expected_empowerments_per_pair = self.calculate_expected_empowerments_per_pair(env, player_id, n_step)
+            best_actions = self.find_best_actions(player_id, expected_empowerments_per_pair)
         return random.choice(best_actions)
+
+
+    def get_emp_pairs(self, player_id):
+        return self.agent_confs[player_id-1]['EmpowermentPairs']
 
 
     def calculate_expected_empowerments_per_pair(self, env, player_id, n_step):
@@ -128,7 +138,7 @@ class CEM():
                             |---pair 0----|  |----pair 1---|  |---pair 2----|
         '''
         expected_empowerments_per_pair = []
-        for emp_pair in self.agent_confs[player_id-1]['EmpowermentPairs']:
+        for emp_pair in self.get_emp_pairs(player_id):
             expected_empowerments = self.calculate_expected_empowerments(env, player_id, (emp_pair['Actor'], emp_pair['Perceptor']), n_step, True)
             expected_empowerments_per_pair.append(expected_empowerments)
         return expected_empowerments_per_pair
@@ -138,7 +148,7 @@ class CEM():
         best_actions = []
         best_reward = -1e10
         for action in self.action_spaces[player_id-1]:
-            empowerment_pair_confs = enumerate(self.agent_confs[player_id-1]['EmpowermentPairs'])
+            empowerment_pair_confs = enumerate(self.get_emp_pairs(player_id))
             action_reward = self.calculate_action_reward(action, empowerment_pair_confs, expected_empowerments_per_pair)
             if action_reward >= best_reward + EPSILON:
                 best_actions = [action]
