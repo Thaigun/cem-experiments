@@ -137,7 +137,6 @@ Actions:
           Commands:
             - remove: true
             - decr: star_count
-            - reward: 1
 
   - Name: diagonal_collect_move
     InputMapping:
@@ -177,7 +176,6 @@ Actions:
           Commands:
             - remove: true
             - decr: star_count
-            - reward: 1
 
   - Name: lateral_push_move
     InputMapping:
