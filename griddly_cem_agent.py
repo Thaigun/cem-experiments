@@ -17,7 +17,7 @@ def hash_obs(obs, player_pos):
     return hash(obs.tobytes() + bytes(player_pos))
 
 
-@lru_cache(maxsize=3000)
+@lru_cache(maxsize=2000)
 def find_player_pos(wrapped_env, player_id):
     agent_actions = wrapped_env.get_available_actions(player_id)
     if not agent_actions:
@@ -39,7 +39,7 @@ def find_player_health(env_state, player_id):
     return player_variables[0]['health']
 
 
-@lru_cache(maxsize=3000)
+@lru_cache(maxsize=2000)
 def find_alive_players(wrapped_env):
     return [player_id for player_id in range(1, wrapped_env.player_count + 1) if wrapped_env.get_available_actions(player_id)]
 
@@ -167,7 +167,7 @@ class CEM():
         return action_reward
 
 
-    @lru_cache(maxsize=5000)
+    @lru_cache(maxsize=1000)
     def calc_pd_s_a(self, env, player_id, action):
         # Build it lazily
         if configuration.health_performance_consistency:
@@ -297,7 +297,7 @@ class CEM():
         return pd_s_nstep
 
 
-    @lru_cache(maxsize=8000)
+    @lru_cache(maxsize=4000)
     def calculate_state_empowerment(self, wrapped_env, actor, perceptor, n_step, trust_correction=False):
         # If the player isn't alive anymore, we assume the empowerment to be zero
         if not isinstance(wrapped_env, GameEndState) and find_player_pos(wrapped_env, actor) is None:

@@ -1,18 +1,20 @@
+from math import floor
 import configuration
 from griddly import GymWrapper, gd
 import os
 from griddly_cem_agent import CEM
 from random import choices
-import env_util
 import policies
-from multiprocessing import Pool, Process
+from multiprocessing import Process
 from level_generator import SimpleLevelGenerator
 from datetime import datetime
 from experiment_data import ExperimentData
 from database_interface import DatabaseInterface
+import time
+import psutil
 
 
-PARALLEL = 1
+test_processes = []
 
 
 def run_game():
@@ -20,8 +22,6 @@ def run_game():
     configuration.activate_config(USE_CONF)
     #configuration.set_visualise_all(True)
     conf_obj = configuration.active_config
-
-
 
     current_path = os.path.dirname(os.path.realpath(__file__))
     env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', conf_obj.get('GriddlyDescription')),
@@ -87,19 +87,56 @@ def run_game():
     experiment_data.set_score(cumulative_reward)
     database_interface = DatabaseInterface('cem-experiments')
     database_interface.save_new_entry(experiment_data.get_data_dict())
-    
+
+
+def is_cpu_available():
+    child_processes = psutil.Process().children(recursive=True)
+    our_cpu_usage = sum([process.cpu_percent(interval=0.1) for process in child_processes]) / 100
+    total_cpu_usage = psutil.cpu_percent(interval=0.2) / 100
+    other_cpu_usage = total_cpu_usage - our_cpu_usage
+    our_max_cpu_usage = 0.3 * (1-other_cpu_usage)
+    cpu_bound = floor(psutil.cpu_count() * our_max_cpu_usage)
+    print('Our CPU usage:', our_cpu_usage, 'total usage:', total_cpu_usage, 'other usage:', other_cpu_usage, 'our max usage:', our_max_cpu_usage, 'our bound:', cpu_bound)
+    return cpu_bound > len(test_processes)
+
+
+def is_memory_available():
+    total_memory_used = psutil.virtual_memory().percent / 100
+    child_processes = psutil.Process().children(recursive=True)
+    our_usage_percentage = sum([process.memory_percent() for process in child_processes]) / 100
+    other_processes_usage = total_memory_used - our_usage_percentage
+    our_usable = 0.3 * (1-other_processes_usage)
+    return our_usage_percentage < our_usable
+
+
+def resources_available():
+    return is_memory_available() and is_cpu_available()
+
+
+def spawn_test_run():
+    new_process = Process(target=run_game)
+    new_process.start()
+    print('Spawned new process:', new_process.pid)
+    test_processes.append(new_process)
+
+
+def clean_finished_processes():
+    for process in test_processes:
+        if not process.is_alive():
+            print('Process', process.pid, 'finished')
+            process.join()
+            test_processes.remove(process)
+
 
 if __name__ == '__main__':
-    if PARALLEL == 1:
-        for _ in range(6):
-            run_game()
-    else:
-        processes = []
-        for _ in range(PARALLEL):
-            p = Process(target=run_game)
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-    
+    sleep_time = 30
+    while True:
+        clean_finished_processes()
+        # If there are resources, reduce the sleep time a bit, and vice versa.
+        if resources_available():
+            sleep_time *= 0.9
+            spawn_test_run()
+        else:
+            sleep_time /= 0.9
+        # It can take a while for the memory consumption to settle, so let's wait a bit.
+        time.sleep(sleep_time)

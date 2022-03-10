@@ -10,6 +10,7 @@ dependencies:
     - firebase-admin
     - gym==0.21.0
     - griddly
+    - psutil
     - pyglet
     - pygame
     - python-dotenv
