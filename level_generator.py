@@ -3,10 +3,10 @@ from griddly.util.rllib.environment.level_generator import LevelGenerator
 import copy
 
 class SimpleLevelGenerator(LevelGenerator):
-    def __init__(self, config, obj_char_to_amount):
+    def __init__(self, config):
         super().__init__(config)
         # A dictionary mapping object characters to the amount of that object in the level
-        self.object_amounts = obj_char_to_amount
+        self.object_amounts = config['obj_char_to_amount']
 
         self.width = config.get('width', 10)
         self.height = config.get('height', 10)
