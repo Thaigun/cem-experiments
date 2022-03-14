@@ -43,10 +43,6 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
     screen = pygame.display.set_mode(video_size)
     clock = pygame.time.Clock()
 
-    agent_policies = {}
-    for agent_conf in agents_confs:
-        agent_policies[agent_conf['PlayerId']] = agent_conf['Policy']
-
     player_in_turn = 1
     trust_correction = False
 
@@ -57,7 +53,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             player_in_turn = 1
             continue
             
-        current_policy = agent_policies[player_in_turn]
+        current_policy = agents_confs[player_in_turn - 1].policy
         if current_policy != 'KBM':
             action_probs = current_policy(env, cem, player_in_turn)
             # Select one of the keys randomly, weighted by the values

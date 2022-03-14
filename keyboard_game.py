@@ -16,16 +16,14 @@ def visualise_landscape(env, agents_confs, emp_idx=None, trust_correction=False)
     >0 -> visualise the cem pair with the given index
     '''
     # Find the player id of the agent with CEM policy
-    visualise_player = next(a['PlayerId'] for a in agents_confs if a['Policy'] == policies.maximise_cem_policy)
-    # Make a mapping from player id to the name defined in YAML
-    player_id_to_names = {a['PlayerId']: (a['Name'] if 'Name' in a else a['PlayerId']) for a in agents_confs}
+    visualise_player = next(a.player_id for a in agents_confs if a.policy == policies.maximise_cem_policy)
     empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, configuration.n_step, trust_correction, None if emp_idx == -1 else emp_idx)
     # TODO: If empowerment_maps is a dict of dicts, does the enumerate work anymore?
     for i, emp_map in enumerate(empowerment_maps):
         if i != emp_idx and emp_idx is not None:
             continue
-        emp_pair_data = agents_confs[visualise_player-1]['EmpowermentPairs'][i]
-        title = 'Empowerment: ' + player_id_to_names[emp_pair_data['Actor']] + ' -> ' + player_id_to_names[emp_pair_data['Perceptor']] + ', steps: ' + str(configuration.n_step)
+        emp_pair_data = agents_confs[visualise_player-1].empowerment_pairs[i]
+        title = 'Empowerment: ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.actor) + ' -> ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.perceptor) + ', steps: ' + str(configuration.n_step)
         print(title)
         print(visualiser.emp_map_to_str(emp_map))
         visualiser.plot_empowerment_landscape(env, emp_map, title)
@@ -36,7 +34,7 @@ def visualise_landscape(env, agents_confs, emp_idx=None, trust_correction=False)
             # In addition, print the CEM map that all different heatmaps weighted and summed
             cem_sum = 0
             for emp_pair_i, map in enumerate(empowerment_maps):
-                cem_sum += map[pos] * agents_confs[visualise_player-1]['EmpowermentPairs'][emp_pair_i]['Weight']
+                cem_sum += map[pos] * agents_confs[visualise_player-1].empowerment_pairs[emp_pair_i].weight
             cem_map[pos] = cem_sum
         print('Weighted CEM map; steps: ' + str(configuration.n_step))
         print(visualiser.emp_map_to_str(cem_map))

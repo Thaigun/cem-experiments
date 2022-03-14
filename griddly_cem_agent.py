@@ -112,9 +112,9 @@ class CEM():
 
 
     def cem_action(self, env, player_id, n_step):
+        # If all empowerments are weighted to zero, all actions are equal.
         emp_pairs = self.get_emp_pairs(player_id)
-        # I all empowerments are weighted to zero, all actions are equal.
-        all_weights_zero = all([emp_pair['Weight'] == 0 for emp_pair in emp_pairs])
+        all_weights_zero = all([emp_pair.weight == 0 for emp_pair in emp_pairs])
         if all_weights_zero:
             best_actions = self.action_spaces[player_id-1]
         else:
