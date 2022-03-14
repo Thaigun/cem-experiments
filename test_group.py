@@ -10,6 +10,7 @@ from experiment_data import ExperimentData
 from firebase_interface import DatabaseInterface
 import env_util
 import action_space_builder
+import configuration
 
 
 RUNS_PER_CONFIG = 30
@@ -25,14 +26,6 @@ class Game:
         self.score = []
         self.env = None
         self.cem = None
-        self.agent_policies = {}
-        self.build_agent_policies()
-        
-
-    def build_agent_policies(self):
-        self.agent_policies = {}
-        for agent_conf in configuration.agents:
-            self.agent_policies[agent_conf.player_id] = agent_conf.policy
 
 
     def play(self):
@@ -68,10 +61,16 @@ class Game:
 
 
     def select_action_for_agent(self, agent_in_turn):
-        current_policy = self.agent_policies[agent_in_turn]
+        current_policy = self.get_agent_policy(agent_in_turn)
         action_probs = current_policy(self.env, self.cem, agent_in_turn)
         action = self.select_action_from_probs(action_probs)
         return env_util.build_action(action, self.env.player_count, agent_in_turn)
+
+
+    def get_agent_policy(agent_id):
+        for agent_conf in configuration.agents:
+            if agent_conf.player_id == agent_id:
+                return agent_conf.policy
 
 
     def select_action_from_probs(self, action_probs):
@@ -85,21 +84,24 @@ class Game:
 def run_test_group(conf_to_use):
     configuration.activate_config_file(conf_to_use)
     #configuration.set_visualise_all(True)
-    action_space = build_action_space(2)
+    build_agent_configurations()
     cem_parameters = get_cem_parameters()
     map_parameters = get_map_parameters()
     for map_param in map_parameters:
         for _ in range(RUNS_PER_CONFIG):
             map = generate_map(map_param)
             for cem_param in cem_parameters:
-                game = Game(action_space, map, cem_param)
-                game.play(action_space, map, cem_param)
-                save_experiment_data(action_space, map_param, map, cem_param, game.actions, game.score)
+                game = Game(action_spaces, map, cem_param)
+                game.play(action_spaces, map, cem_param)
+                save_experiment_data(action_spaces, map_param, map, cem_param, game.actions, game.score)
 
 
-def build_action_space(player_count):
-    builder = action_space_builder.ActionSpaceBuilder()
-    return builder.build(player_count)
+def build_agent_configurations():
+    builder = action_space_builder.CollectorActionSpaceBuilder()
+    player_action_space = builder.build_player_action_space()
+    npc_action_space = builder.build_npc_action_space()
+    configuration.add_agent(1, player_action_space)
+    configuration.add_agent(2, npc_action_space)
 
 
 def get_cem_parameters():

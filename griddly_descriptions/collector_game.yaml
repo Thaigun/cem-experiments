@@ -335,6 +335,81 @@ Actions:
         Dst:
           Object: avatar
 
+  - Name: melee_attack
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          OrientationVector: [0, -1]
+          Description: 'front'
+    Behaviours:
+      - Src:
+          Object: avatar
+        Dst:
+          Object: avatar
+          Commands:
+            - decr: health
+            - lte:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
+          
+  - Name: ranged_attack
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, -1]
+          Description: 'front'
+    Behaviours:
+      - Src:
+          Object: avatar
+        Dst:
+          Object: _empty
+          Commands:
+            - spawn: projectile
+      - Src:
+          Object: avatar
+        Dst:
+          Object: avatar
+          Commands:
+            - decr: health
+            - lte:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
+
+  - Name: ranged_projectile
+    InputMapping:
+      Internal: true
+    Behaviours:
+      - Src:
+          Object: projectile
+          Commands:
+            - mov: _dest
+            - exec:
+                Action: ranged_projectile
+        Dst:
+          Object: _empty
+      - Src:
+          Object: projectile
+          Commands:
+            - remove: true
+        Dst:
+          Object: [wall, projectile]
+      - Src:
+          Object: projectile
+          Commands:
+            - remove: true
+        Dst:
+          Object: avatar
+          Commands:
+            - decr: health
+            - lte:
+                Arguments: [health, 0]
+                Commands:
+                  - remove: true
+
   - Name: choose_icon
     InputMapping:
       Internal: true
@@ -378,3 +453,10 @@ Objects:
     Observers:
       Sprite2D:
         - Image: Star.png
+  - Name: projectile
+    MapCharacter: x
+    InitialActions:
+      - Action: ranged_projectile
+    Observers:
+      Sprite2D:
+        - Image: Projectile.png
