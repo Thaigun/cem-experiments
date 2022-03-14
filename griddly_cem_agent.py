@@ -124,7 +124,7 @@ class CEM():
 
 
     def get_emp_pairs(self, player_id):
-        return self.agent_confs[player_id-1]['EmpowermentPairs']
+        return self.agent_confs[player_id-1].empowerment_pairs
 
 
     def calculate_expected_empowerments_per_pair(self, env, player_id, n_step):
@@ -169,11 +169,10 @@ class CEM():
 
     @lru_cache(maxsize=1000)
     def calc_pd_s_a(self, env, player_id, action):
-        # Build it lazily
         if configuration.health_performance_consistency:
             player_health = find_player_health(env.get_state(), player_id)
             if player_health is not None:
-                health_ratio = player_health / self.agent_confs[player_id-1]['MaxHealth']
+                health_ratio = player_health / self.agent_confs[player_id-1].max_health
             else:
                 health_ratio = 1.0
         else:
@@ -215,7 +214,7 @@ class CEM():
     def find_assumed_policy(self, agent_id, wrapped_env):
         current_agent_conf = self.agent_confs[agent_id-1]
         # Find the policy of the agent in turn
-        return current_agent_conf['AssumedPolicy'](wrapped_env._env , self, agent_id)
+        return current_agent_conf.assumed_policy(wrapped_env._env , self, agent_id)
 
 
     def build_distribution(self, wrapped_env, action_seq, action_stepper, actor, current_step_agent, perceptor, return_obs=False, anticipation=False, trust_correction=False):
@@ -269,12 +268,12 @@ class CEM():
             # Recursively, build the distribution for each possbile follow-up state
             for next_state, next_state_prob in next_step_pd_s.items():
                 # If the actor trusts the current agent, we skip all actions that would reduce the actor's empowerment to zero
-                if trust_correction and 'Trust' in actor_conf and next_state_prob > 0.01:
+                if trust_correction and actor_conf.trust is not None and next_state_prob > 0.01:
                     # Find the trust setting for the current agent
-                    trust_current = [trust_conf for trust_conf in actor_conf['Trust'] if trust_conf['PlayerId'] == current_step_agent]
+                    trust_current = [trust_conf for trust_conf in actor_conf.trust if trust_conf.player_id == current_step_agent]
                     if len(trust_current) == 1:
                         # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
-                        if (trust_current[0]['Anticipation'] and anticipation) or action_stepper in trust_current[0]['Steps']:
+                        if (trust_current[0].anticipation and anticipation) or action_stepper in trust_current[0].steps:
                             follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
                             if follow_up_emp < EPSILON:
                                 current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)

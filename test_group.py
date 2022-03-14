@@ -9,6 +9,7 @@ from datetime import datetime
 from experiment_data import ExperimentData
 from firebase_interface import DatabaseInterface
 import env_util
+import action_space_builder
 
 
 RUNS_PER_CONFIG = 30
@@ -24,16 +25,14 @@ class Game:
         self.score = []
         self.env = None
         self.cem = None
-        self.agent_policies = None
+        self.agent_policies = {}
         self.build_agent_policies()
         
 
     def build_agent_policies(self):
-        conf_obj = configuration.active_config
-        agent_confs = conf_obj['Agents']
         self.agent_policies = {}
-        for agent_conf in agent_confs:
-            self.agent_policies[agent_conf['PlayerId']] = agent_conf['Policy']
+        for agent_conf in configuration.agents:
+            self.agent_policies[agent_conf.player_id] = agent_conf.policy
 
 
     def play(self):
@@ -44,8 +43,7 @@ class Game:
     
     
     def create_environment(self):
-        conf_obj = configuration.active_config
-        env_file_name = conf_obj.get('GriddlyDescription')
+        env_file_name = configuration.griddly_description
         current_path = os.path.dirname(os.path.realpath(__file__))
         self.env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', env_file_name),
                         shader_path='shaders',
@@ -57,8 +55,7 @@ class Game:
 
 
     def create_cem_agent(self):
-        conf_obj = configuration.active_config
-        self.cem = CEM(self.env, conf_obj['Agents'])
+        self.cem = CEM(self.env, configuration.agents)
 
 
     def take_turn(self):
@@ -88,7 +85,7 @@ class Game:
 def run_test_group(conf_to_use):
     configuration.activate_config_file(conf_to_use)
     #configuration.set_visualise_all(True)
-    action_space = build_action_space()
+    action_space = build_action_space(2)
     cem_parameters = get_cem_parameters()
     map_parameters = get_map_parameters()
     for map_param in map_parameters:
@@ -100,9 +97,9 @@ def run_test_group(conf_to_use):
                 save_experiment_data(action_space, map_param, map, cem_param, game.actions, game.score)
 
 
-def build_action_space():
-    # TODO: Implement
-    return 
+def build_action_space(player_count):
+    builder = action_space_builder.ActionSpaceBuilder()
+    return builder.build(player_count)
 
 
 def get_cem_parameters():

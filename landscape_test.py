@@ -4,8 +4,7 @@ from visualiser import plot_empowerment_landscape, build_landscape
 import configuration
 
 if __name__ == '__main__':
-    configuration.activate_config("pacifist")
-    conf_obj = configuration.active_config
+    configuration.activate_config_file("pacifist")
 
     wrapper = GymWrapperFactory()
     name = 'projectiles_env'
@@ -16,12 +15,12 @@ if __name__ == '__main__':
                      level=0)
 
     player_id = 2
-    emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in conf_obj['Agents'][player_id-1]['EmpowermentPairs']]
+    emp_pairs = [(emp.actor, emp.perceptor) for emp in configuration.agents[player_id-1].empowerment_pairs]
 
     for nstep in range(1, 2):
         print('nstep: ', nstep)
         env.reset()
-        calculated_emps = build_landscape(env, player_id, conf_obj['Agents'], nstep)
-        for emp_pair_i, emp_pair in enumerate(emp_pairs):
-            plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
+        calculated_emps = build_landscape(env, player_id, configuration.agents, nstep)
+        for emp_conf_i, emp_conf in enumerate(configuration.agents[player_id-1].empowerment_pairs):
+            plot_empowerment_landscape(env, calculated_emps[emp_conf_i], 'Empowerment: ' + str(emp_conf))
     

@@ -5,7 +5,7 @@ def action_to_str(env, action):
 
 
 def agent_id_to_name(agents_confs, agent_id):
-    return agents_confs[agent_id-1]['Name'] if 'Name' in agents_confs[agent_id-1] else 'Agent ' + str(agent_id)
+    return agents_confs[agent_id-1].name if agents_confs[agent_id-1].name != "" else 'Agent ' + str(agent_id)
     
 
 # Returns the player_id of the player who has won.
@@ -20,7 +20,7 @@ def find_winner(info):
 def build_action_spaces(env, agent_confs):
     def build_plr_action_space(agent_conf):
         player_action_space = []
-        player_i_actions = agent_conf['Actions']
+        player_i_actions = agent_conf.actions
         if 'idle' in player_i_actions:
             player_action_space.append((0,0))
         for action_type_index, action_name in enumerate(env.action_names):
