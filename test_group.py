@@ -10,6 +10,7 @@ from firebase_interface import DatabaseInterface
 import database_object
 import env_util
 import action_space_builder
+import random
 
 
 RUNS_PER_CONFIG = 30
@@ -86,6 +87,8 @@ def run_test_group(conf_to_use):
     game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
     cem_parameters = get_cem_parameters(db)
     map_parameters = get_map_parameters(db)
+    random.shuffle(cem_parameters)
+    random.shuffle(map_parameters)
     for map_param_key in map_parameters:
         map_param = map_parameters.get(map_param_key)
         for _ in range(RUNS_PER_CONFIG):
