@@ -42,14 +42,16 @@ class GameRulesObject:
 
 
 class CEMParamObject:
-    def __init__(self, actors, perceptors, weights):
+    def __init__(self, actors, perceptors, weights, anticipation_trust=False, trust_steps=[]):
         assert len(actors) == len(perceptors) == len(weights)
         self.empowerment_pairs = [EmpowermentPairObject(actors[i], perceptors[i], weights[i]) for i in range(len(actors))]
+        self.trust = TrustObject(anticipation_trust, trust_steps)
         self.game_runs = []
 
     def get_data_dict(self):
         return {
             'EmpowermentPairs': [empowerment_pair.get_data_dict() for empowerment_pair in self.empowerment_pairs],
+            'Trust': self.trust.get_data_dict(),
         }
 
 
@@ -64,6 +66,18 @@ class EmpowermentPairObject:
             'Actor': self.actor,
             'Perceptor': self.perceptor,
             'Weight': self.weight
+        }
+
+
+class TrustObject:
+    def __init__(self, anticipation, steps):
+        self.anticipation = anticipation
+        self.steps = steps
+
+    def get_data_dict(self):
+        return {
+            'Anticipation': self.anticipation,
+            'Steps': self.steps
         }
 
 

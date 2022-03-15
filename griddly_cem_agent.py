@@ -356,7 +356,7 @@ class CEM():
             # If the actor is in the winning team, all their actions lead to maximum empowerment
             if actor == wrapped_env.winner:
                 hashed_obs = self.rng.integers(100, 4000000000)
-            # But if the actor loses futura actions lead to a minimum empowerment
+            # But if the actor loses future actions lead to a minimum empowerment
             else:
                 hashed_obs = wrapped_env.winner
         else:

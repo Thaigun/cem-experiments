@@ -70,6 +70,14 @@ class AgentConf:
                                                         empowerment_pair_conf['Weight']))
         self.empowerment_pairs = empowerment_pairs
 
+    def set_trust_from_dict(self, trust_dict):
+        trust_confs = []
+        for trust_conf in trust_dict:
+            trust_confs.append(TrustConf(trust_conf['PlayerId'],
+                                        trust_conf['Anticipation'],
+                                        trust_conf['Steps'] if 'Steps' in trust_conf else []))
+        self.trust = trust_confs
+
 
 class EmpowermentPairConf:
     def __init__(self, actor, perceptor, weight):

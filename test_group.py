@@ -81,23 +81,23 @@ class Game:
 
 def run_test_group(conf_to_use):
     global_configuration.activate_config_file(conf_to_use)
+    global_configuration.set_health_performance_consistency(True)
     #configuration.set_visualise_all(True)
     player_action_space, npc_action_space = build_action_spaces()
     db = DatabaseInterface('cem-experiments')
     game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
     cem_parameters = get_cem_parameters(db)
+    cem_param_keys = list(cem_parameters)
     map_parameters = get_map_parameters(db)
-    random.shuffle(cem_parameters)
-    random.shuffle(map_parameters)
-    for map_param_key in map_parameters:
+    map_param_keys = list(map_parameters)
+    random.shuffle(cem_param_keys)
+    random.shuffle(map_param_keys)
+    for map_param_key in map_param_keys:
         map_param = map_parameters.get(map_param_key)
         for _ in range(RUNS_PER_CONFIG):
             map = generate_map(map_param)
-            for cem_param_key in cem_parameters:
-                game_conf = game_configuration.GameConf('collector_game.yaml', 2)
-                game_conf.add_agent('MCTS agent', 1, player_action_space, policies.mcts_policy, policies.uniform_policy)
-                cem_agent_conf = game_conf.add_agent('CEM agent', 2, npc_action_space, policies.maximise_cem_policy, policies.uniform_policy)
-                cem_agent_conf.set_empowerment_pairs_from_dict(cem_parameters.get(cem_param_key)['EmpowermentPairs'])
+            for cem_param_key in cem_param_keys:
+                game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
                 game = Game(game_conf, map)
                 game.play()
                 save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game.actions, game.score)
@@ -113,7 +113,7 @@ def build_action_spaces():
 def get_cem_parameters(db_ref):
     new_cem_param_objects = [
         database_object.CEMParamObject([2,1,2],[2,1,1],[0.5, 0.1,-0.5]),
-        database_object.CEMParamObject([2,1,2],[2,1,1],[0.2, 0.5, 0.3]),
+        database_object.CEMParamObject([2,1,2],[2,1,1],[0.2, 0.5, 0.3], True),
         database_object.CEMParamObject([2,1,2],[2,1,1],[0,   0,   0]),
     ]
     cem_param_refs = fetch_data_and_save_if_none(db_ref, 'cem_params', new_cem_param_objects)
@@ -139,6 +139,17 @@ def fetch_data_and_save_if_none(db_ref, path, default_data_objects):
             db_ref.save_new_entry(path, data_obj.get_data_dict())
     path_data = path_ref.get()
     return path_data
+
+
+def build_game_conf(player_action_space, npc_action_space, cem_param):
+    game_conf = game_configuration.GameConf('collector_game.yaml', 2)
+    game_conf.add_agent('MCTS agent', 1, player_action_space, policies.mcts_policy, policies.uniform_policy)
+    cem_agent_conf = game_conf.add_agent('CEM agent', 2, npc_action_space, policies.maximise_cem_policy, policies.uniform_policy)
+    cem_agent_conf.set_empowerment_pairs_from_dict(cem_param['EmpowermentPairs'])
+    trust_dict = cem_param['Trust']
+    trust_dict['PlayerId'] = 1
+    cem_agent_conf.set_trust_from_dict([trust_dict])
+    return game_conf
 
 
 def save_game_rules_obj(db_ref, player_action_space, npc_action_space):
