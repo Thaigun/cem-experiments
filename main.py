@@ -14,7 +14,7 @@ test_processes = []
 
 def is_cpu_available():
     child_processes = psutil.Process().children(recursive=True)
-    our_cpu_usage = sum([process.cpu_percent(interval=0.1) for process in child_processes]) / 100
+    our_cpu_usage = sum([process.cpu_percent(interval=0.1) for process in child_processes]) / psutil.cpu_count() / 100
     total_cpu_usage = psutil.cpu_percent(interval=0.2) / 100
     other_cpu_usage = total_cpu_usage - our_cpu_usage
     our_max_cpu_usage = 0.3 * (1-other_cpu_usage)
@@ -29,6 +29,7 @@ def is_memory_available():
     our_usage_percentage = sum([process.memory_percent() for process in child_processes]) / 100
     other_processes_usage = total_memory_used - our_usage_percentage
     our_usable = 0.3 * (1-other_processes_usage)
+    print('Our memory usage:', our_usage_percentage, 'total usage:', total_memory_used, 'other usage:', other_processes_usage, 'our usable:', our_usable)
     return our_usage_percentage < our_usable
 
 
@@ -60,9 +61,9 @@ if __name__ == '__main__':
             clean_finished_processes()
             # If there are resources, reduce the sleep time a bit, and vice versa.
             if resources_available():
-                sleep_time *= 0.9
+                sleep_time *= 0.93
                 spawn_test_run()
             else:
-                sleep_time /= 0.9
+                sleep_time /= 0.93
             # It can take a while for the memory consumption to settle, so let's wait a bit.
             time.sleep(sleep_time)
