@@ -174,14 +174,7 @@ class CEM():
 
     @lru_cache(maxsize=1000)
     def calc_pd_s_a(self, env, player_id, action):
-        if global_configuration.health_performance_consistency:
-            player_health = find_player_health(env.get_state(), player_id)
-            if player_health is not None:
-                health_ratio = player_health / self.agent_confs[player_id-1].max_health
-            else:
-                health_ratio = 1.0
-        else:
-            health_ratio = 1.0
+        health_ratio = self.get_health_ratio(env, player_id)
         # if the player is dead, the empowerment is 0
         if health_ratio == 0:
             return {env: 1.0}
@@ -202,6 +195,18 @@ class CEM():
         if health_ratio < 1 - EPSILON:
             self.health_perf_consistency(env, health_ratio, result)
         return result
+
+
+    def get_health_ratio(self, env, player_id):
+        if global_configuration.health_performance_consistency:
+            player_health = find_player_health(env.get_state(), player_id)
+            if player_health is not None:
+                health_ratio = player_health / self.agent_confs[player_id-1].max_health
+            else:
+                health_ratio = 1.0
+        else:
+            health_ratio = 1.0
+        return health_ratio
 
 
     def health_perf_consistency(self, env, health_ratio, transitions):
@@ -243,13 +248,38 @@ class CEM():
         Returns:
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
         '''
-        # If this is the last step, end the recursion
-        if (action_stepper == len(action_seq) and current_step_agent == perceptor) or isinstance(wrapped_env, GameEndState):
-            # if return_obs is True, then we return the observation instead of the state
-            return {self.env_to_hashed_obs(wrapped_env, actor, perceptor): 1.0} if return_obs else {wrapped_env: 1.0}
+        def is_final_state():
+            return (action_stepper == len(action_seq) and current_step_agent == perceptor) or isinstance(wrapped_env, GameEndState)
+
+        def get_final_return_object():
+            if return_obs:
+                return { self.env_to_hashed_obs(wrapped_env, actor, perceptor): 1.0 }
+            else:
+                return { wrapped_env: 1.0 }
+
+        def is_trust_applied():
+            actor_conf = self.agent_confs[actor-1]
+            if trust_correction and actor_conf.trust is not None:
+                # Find the trust setting for the current agent
+                trust_current = [trust_conf for trust_conf in actor_conf.trust if trust_conf.player_id == current_step_agent]
+                if len(trust_current) == 1:
+                    # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
+                    return (trust_current[0].anticipation and anticipation) or action_stepper in trust_current[0].steps
+            return False
+
+        def next_state_destroys_empowerment(current_env, next_state):
+            follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
+            if follow_up_emp < EPSILON:
+                current_state_emp = self.calculate_state_empowerment(current_env, actor, actor, 1)
+                return current_state_emp >= EPSILON
+            return False
+
+
+        if is_final_state():
+            return get_final_return_object()
 
         next_step_agent = current_step_agent % self.player_count + 1
-        # Also, increase the action stepper if this agent was the active one.
+        # Increase the action stepper if this agent was the active one.
         next_action_step = action_stepper + 1 if actor == current_step_agent else action_stepper
         
         # If the current agent is not alive, go straight to the next agent
@@ -261,30 +291,35 @@ class CEM():
         
         # Find the probability of each acttion for the current agent
         assumed_policy = self.find_assumed_policy(current_step_agent, wrapped_env) if actor != current_step_agent else {self.action_spaces[current_step_agent-1][action_seq[action_stepper]]: 1.0}
+        
+        apply_trust = is_trust_applied()
 
         # Sum up the total probability of all possible actions so we can normalize in the end if needed
         total_prob = 0
+        action_to_pd_s = {}
         for action in assumed_policy:
             if assumed_policy[action] == 0:
                 continue
             # Get the probability distribution for the next step, given an action
-            next_step_pd_s = self.calc_pd_s_a(wrapped_env, current_step_agent, action)
+            action_to_pd_s[action] = self.calc_pd_s_a(wrapped_env, current_step_agent, action)
 
+        trust_filtered_actions = list(action_to_pd_s)
+        if apply_trust:
+            for action in action_to_pd_s:
+                next_step_pd_s = action_to_pd_s[action]
+                for next_state, next_state_prob in next_step_pd_s.items():
+                    # If the actor trusts the current agent, we skip all actions that would reduce the actor's empowerment to zero
+                    if next_state_prob > 0.01 and next_state_destroys_empowerment(wrapped_env, next_state):
+                        trust_filtered_actions.remove(action)
+                        break
+        # If all actions led to no empowerment, we should consider them all.
+        if len(trust_filtered_actions) == 0:
+            trust_filtered_actions = list(action_to_pd_s)
+
+        for action in trust_filtered_actions:
             # Recursively, build the distribution for each possbile follow-up state
+            next_step_pd_s = action_to_pd_s[action]
             for next_state, next_state_prob in next_step_pd_s.items():
-                # If the actor trusts the current agent, we skip all actions that would reduce the actor's empowerment to zero
-                if trust_correction and actor_conf.trust is not None and next_state_prob > 0.01:
-                    # Find the trust setting for the current agent
-                    trust_current = [trust_conf for trust_conf in actor_conf.trust if trust_conf.player_id == current_step_agent]
-                    if len(trust_current) == 1:
-                        # Check if the trust correction should be applied at this step (anticipation or one of the following steps)
-                        if (trust_current[0].anticipation and anticipation) or action_stepper in trust_current[0].steps:
-                            follow_up_emp = self.calculate_state_empowerment(next_state, actor, actor, 1)
-                            if follow_up_emp < EPSILON:
-                                current_state_emp = self.calculate_state_empowerment(wrapped_env, actor, actor, 1)
-                                if current_state_emp >= EPSILON:
-                                    break
-
                 child_distribution = self.build_distribution(next_state, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)
                 # Add the follow-up states to the overall distribution of this state p(S_t+n|s_t, a_t^n)
                 for next_env in child_distribution:
