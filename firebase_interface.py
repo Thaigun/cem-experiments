@@ -1,7 +1,6 @@
 import firebase_admin
 from firebase_admin import credentials, db
 from dotenv import dotenv_values
-import json
 
 
 class DatabaseInterface:
@@ -23,7 +22,11 @@ class DatabaseInterface:
 
 
     def save_new_entry(self, path, data_entry):
-        self.database.child(path).push(data_entry)
+        return self.database.child(path).push(data_entry)
+
+    
+    def get_child_ref(self, path):
+        return self.database.child(path)
 
     
     def fetch_all(self):

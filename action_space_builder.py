@@ -37,13 +37,13 @@ class CollectorActionSpaceBuilder:
             found_move_actions = action_set.intersection(move_actions)
             return len(found_move_actions) > 0
 
-        def total_number_of_actions(action_list):
-            return sum(self.available_action_amounts[action] for action in action_list)
-
         valid_action_set = False
         while not valid_action_set:
             action_set_candidate = self.build_random_action_set()
-            valid_action_set = contains_collect_actions(action_set_candidate) and contains_move_actions(action_set_candidate) and total_number_of_actions(action_set_candidate) <= self.max_number_of_actions
+            valid_action_set = (contains_collect_actions(action_set_candidate) and 
+                                contains_move_actions(action_set_candidate) and 
+                                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and
+                                not self.has_blocked_combos(action_set_candidate))
         return action_set_candidate
 
 
@@ -58,13 +58,12 @@ class CollectorActionSpaceBuilder:
             found_move_actions = action_set.intersection(move_actions)
             return len(found_move_actions) > 0
 
-        def total_number_of_actions(action_list):
-            return sum(self.available_action_amounts[action] for action in action_list)
-
         valid_action_set = False
         while not valid_action_set:
             action_set_candidate = self.build_random_action_set()
-            valid_action_set = contains_turn_and_attack(action_set_candidate) or contains_move_actions(action_set_candidate) and total_number_of_actions(action_set_candidate) <= self.max_number_of_actions
+            valid_action_set = ((contains_turn_and_attack(action_set_candidate) or contains_move_actions(action_set_candidate)) and 
+                                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and 
+                                not self.has_blocked_combos(action_set_candidate))
         return action_set_candidate
 
 
@@ -76,3 +75,17 @@ class CollectorActionSpaceBuilder:
             random_float = random.random()
             if random_float < uniform_probability * probability_coefficient:
                 action_space.add(action_name)
+        return action_space
+
+
+    def total_number_of_actions(self, action_list):
+        return sum(self.available_action_amounts[action] for action in action_list)
+
+
+    def has_blocked_combos(self, action_list):
+        for action in action_list:
+            if action in self.blocked_combos:
+                for blocked_action in self.blocked_combos[action]:
+                    if blocked_action in action_list:
+                        return True
+        return False

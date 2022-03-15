@@ -1,7 +1,7 @@
 from math import log, sqrt
 import random
 import env_util
-import configuration
+import global_configuration
 import numpy as np
 
 
@@ -84,7 +84,7 @@ class Node:
             for reward_i, reward in enumerate(reward):
                 iteration_rewards[reward_i] += reward
 
-            if configuration.visualise_all:
+            if global_configuration.visualise_all:
                 env.render(mode='human', observer='global')
             
             if done:
@@ -153,7 +153,7 @@ class Node:
             obs, reward, done, info = env.step(env_util.build_action(action, len(action_spaces), current_agent))
             for i in range(env.player_count):
                 iteration_rewards[i] += reward[i]
-            if configuration.visualise_all:
+            if global_configuration.visualise_all:
                 env.render(mode='human', observer='global')
             if not SKIP_OPPONENTS:
                 current_agent = current_agent % env.player_count + 1
@@ -180,7 +180,7 @@ class OpponentNode(Node):
         selected_child_i = random.choice(range(len(self.children)))
         selected_child = self.children[selected_child_i]
         obs, rew, done, info = env.step(env_util.build_action(action_spaces[player_in_turn-1][selected_child_i], len(action_spaces), player_in_turn))
-        if configuration.visualise_all:
+        if global_configuration.visualise_all:
             env.render(mode='human', observer='global')
 
         for i in range(env.player_count):

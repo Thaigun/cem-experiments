@@ -20,7 +20,7 @@ def find_winner(info):
 def build_action_spaces(env, agent_confs):
     def build_plr_action_space(agent_conf):
         player_action_space = []
-        player_i_actions = agent_conf.actions
+        player_i_actions = agent_conf.action_space
         if 'idle' in player_i_actions:
             player_action_space.append((0,0))
         for action_type_index, action_name in enumerate(env.action_names):

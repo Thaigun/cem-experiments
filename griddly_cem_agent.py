@@ -3,7 +3,7 @@ import empowerment_maximization
 import numpy as np
 from functools import lru_cache
 import random
-import configuration
+import global_configuration
 import env_util
 
 
@@ -103,12 +103,17 @@ class GameEndState():
 
 
 class CEM():
-    def __init__(self, env, agent_confs, seed=None, samples=1):
+    def __init__(self, env, game_conf, seed=None, samples=1):
         self.samples = samples
         self.player_count = env.player_count
-        self.agent_confs = agent_confs
-        self.action_spaces = env_util.build_action_spaces(env, agent_confs)
+        self.game_conf = game_conf
+        self.action_spaces = env_util.build_action_spaces(env, self.agent_confs)
         self.rng = np.random.default_rng() if seed is None else np.random.default_rng(seed)
+
+
+    @property
+    def agent_confs(self):
+        return self.game_conf.agents
 
 
     def cem_action(self, env, player_id, n_step):
@@ -139,7 +144,7 @@ class CEM():
         '''
         expected_empowerments_per_pair = []
         for emp_pair in self.get_emp_pairs(player_id):
-            expected_empowerments = self.calculate_expected_empowerments(env, player_id, (emp_pair['Actor'], emp_pair['Perceptor']), n_step, True)
+            expected_empowerments = self.calculate_expected_empowerments(env, player_id, (emp_pair.actor, emp_pair.perceptor), n_step, True)
             expected_empowerments_per_pair.append(expected_empowerments)
         return expected_empowerments_per_pair
 
@@ -155,7 +160,7 @@ class CEM():
             elif abs(action_reward-best_reward) < EPSILON:
                 best_actions.append(action)
             best_reward = max(best_reward, action_reward)
-            if configuration.verbose_calculation:
+            if global_configuration.verbose_calculation:
                 print(f'Action {action} has expected reward {action_reward}')
         return best_actions
             
@@ -163,13 +168,13 @@ class CEM():
     def calculate_action_reward(self, action, empowerment_pair_confs, expected_empowerments_per_pair):
         action_reward = 0
         for emp_pair_i, emp_conf in empowerment_pair_confs:
-            action_reward += emp_conf['Weight'] * expected_empowerments_per_pair[emp_pair_i][action]
+            action_reward += emp_conf.weight * expected_empowerments_per_pair[emp_pair_i][action]
         return action_reward
 
 
     @lru_cache(maxsize=1000)
     def calc_pd_s_a(self, env, player_id, action):
-        if configuration.health_performance_consistency:
+        if global_configuration.health_performance_consistency:
             player_health = find_player_health(env.get_state(), player_id)
             if player_health is not None:
                 health_ratio = player_health / self.agent_confs[player_id-1].max_health
@@ -214,7 +219,7 @@ class CEM():
     def find_assumed_policy(self, agent_id, wrapped_env):
         current_agent_conf = self.agent_confs[agent_id-1]
         # Find the policy of the agent in turn
-        return current_agent_conf.assumed_policy(wrapped_env._env , self, agent_id)
+        return current_agent_conf.assumed_policy(wrapped_env._env , self, agent_id, self.game_conf)
 
 
     def build_distribution(self, wrapped_env, action_seq, action_stepper, actor, current_step_agent, perceptor, return_obs=False, anticipation=False, trust_correction=False):

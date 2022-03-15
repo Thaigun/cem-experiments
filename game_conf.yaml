@@ -2,11 +2,11 @@ collector:
   GriddlyDescription: "collector_game.yaml"
   NStep: 2
   HealthPerformanceConsistency: false
+  MCTSTimeLimit: 2
   Agents:
     - PlayerId: 1
       Name: Player
       Policy: "mcts_policy"
-      MCTSTimeLimit: 2
       AssumedPolicy: "uniform_policy"
       Actions: ["lateral_collect_move"]
       Keys: ["awdsqexz"]

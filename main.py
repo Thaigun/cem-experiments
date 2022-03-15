@@ -6,6 +6,7 @@ import test_group
 
 
 CONFIG_TO_USE = 'collector'
+PARALLEL = True
 
 
 test_processes = []
@@ -51,14 +52,17 @@ def clean_finished_processes():
 
 
 if __name__ == '__main__':
-    sleep_time = 30
-    while True:
-        clean_finished_processes()
-        # If there are resources, reduce the sleep time a bit, and vice versa.
-        if resources_available():
-            sleep_time *= 0.9
-            spawn_test_run()
-        else:
-            sleep_time /= 0.9
-        # It can take a while for the memory consumption to settle, so let's wait a bit.
-        time.sleep(sleep_time)
+    if not PARALLEL:
+        test_group.run_test_group(CONFIG_TO_USE)
+    else:
+        sleep_time = 30
+        while True:
+            clean_finished_processes()
+            # If there are resources, reduce the sleep time a bit, and vice versa.
+            if resources_available():
+                sleep_time *= 0.9
+                spawn_test_run()
+            else:
+                sleep_time /= 0.9
+            # It can take a while for the memory consumption to settle, so let's wait a bit.
+            time.sleep(sleep_time)

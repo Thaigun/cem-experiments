@@ -1,30 +1,29 @@
-import configuration
+import global_configuration
 from mcts import MCTS
 import env_util
 from datetime import timedelta, datetime
 
 
-def uniform_policy(env, cem, player_id):
+def uniform_policy(env, cem, player_id, game_conf):
     action_probs = {}
-    action_spaces = cem.action_spaces if cem is not None else env_util.build_action_spaces(env, configuration.agents)
+    action_spaces = cem.action_spaces if cem is not None else env_util.build_action_spaces(env, game_conf.agents)
     for action in action_spaces[player_id-1]:
         action_probs[action] = 1.0 / len(action_spaces[player_id-1])
     return action_probs
 
 
-def stupid_move_policy(env, cem, player_id):
+def stupid_move_policy(env, cem, player_id, game_conf):
     return {(1,2): 1.0}
 
 
-def maximise_cem_policy(env, cem, player_in_turn):
-    action = cem.cem_action(env, player_in_turn, configuration.n_step)
+def maximise_cem_policy(env, cem, player_in_turn, game_conf):
+    action = cem.cem_action(env, player_in_turn, game_conf.n_step)
     return { tuple(action): 1.0 }
 
 
-def mcts_policy(env, cem, player_in_turn):
-    player_conf = next(p for p in configuration.agents if p.player_id == player_in_turn)
-    time_limit = player_conf['MCTSTimeLimit'] if 'MCTSTimeLimit' in player_conf else 2
-    action_spaces = env_util.build_action_spaces(env, configuration.agents)
+def mcts_policy(env, cem, player_in_turn, game_conf):
+    time_limit = global_configuration.time_limit
+    action_spaces = env_util.build_action_spaces(env, game_conf.agents)
     mcts = MCTS(env, player_in_turn, action_spaces)
     now = datetime.now()
     
