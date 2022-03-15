@@ -2,7 +2,7 @@ from random import choices
 import pygame
 from pygame.locals import VIDEORESIZE
 import env_util
-import configuration
+import global_configuration
 
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
@@ -89,8 +89,8 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
                         trust_correction = not trust_correction
                         print('Trust correction (for visualisations) is', trust_correction)
                     elif event.key == ord('y'):
-                        configuration.set_health_performance_consistency(not configuration.health_performance_consistency)
-                        print('Health performance consistency is', configuration.health_performance_consistency)
+                        global_configuration.set_health_performance_consistency(not global_configuration.health_performance_consistency)
+                        print('Health performance consistency is', global_configuration.health_performance_consistency)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
                         pressed_keys.remove(event.key)

@@ -1,10 +1,10 @@
 import os
 from griddly import GymWrapperFactory, gd, GymWrapper
 from visualiser import plot_empowerment_landscape, build_landscape
-import configuration
+import global_configuration
 
 if __name__ == '__main__':
-    configuration.activate_config_file("pacifist")
+    global_configuration.activate_config_file("pacifist")
 
     wrapper = GymWrapperFactory()
     name = 'projectiles_env'
@@ -15,12 +15,12 @@ if __name__ == '__main__':
                      level=0)
 
     player_id = 2
-    emp_pairs = [(emp.actor, emp.perceptor) for emp in configuration.agents[player_id-1].empowerment_pairs]
+    emp_pairs = [(emp.actor, emp.perceptor) for emp in global_configuration.agents[player_id-1].empowerment_pairs]
 
     for nstep in range(1, 2):
         print('nstep: ', nstep)
         env.reset()
-        calculated_emps = build_landscape(env, player_id, configuration.agents, nstep)
-        for emp_conf_i, emp_conf in enumerate(configuration.agents[player_id-1].empowerment_pairs):
+        calculated_emps = build_landscape(env, player_id, global_configuration.agents, nstep)
+        for emp_conf_i, emp_conf in enumerate(global_configuration.agents[player_id-1].empowerment_pairs):
             plot_empowerment_landscape(env, calculated_emps[emp_conf_i], 'Empowerment: ' + str(emp_conf))
     
