@@ -183,7 +183,7 @@ def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map
     map_params_game_runs_ref.push(game_run_ref.key)
 
 
-def save_new_game_run(db, cem_params_key, map_params_key, game_rules_key, map, actions, score):
+def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, actions, score):
     game_run_obj = database_object.GameRunObject(map, actions, score)
     game_run_obj.set_cem_param(cem_params_key)
     game_run_obj.set_map_params(map_params_key)

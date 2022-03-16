@@ -21,7 +21,6 @@ class SimpleLevelGenerator(LevelGenerator):
 
     def generate(self):
         # Width and height do not contain the bounding walls
-        total_size = (self.width + 2) * (self.height + 2)
         level_sting_lines = [[] for _ in range(self.height + 2)]
         objects_left = copy.copy(self.object_amounts)
         for y in range(0, self.width + 2):
