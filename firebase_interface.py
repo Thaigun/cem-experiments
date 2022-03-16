@@ -9,7 +9,8 @@ class DatabaseInterface:
             self.firebase_app = firebase_admin.get_app(name)
         except ValueError:
             self.initialize_firebase_app(name)
-        self.database = db.reference('/v0', self.firebase_app)
+        config = dotenv_values('.env')
+        self.database = db.reference(config['DB_ROOT'], self.firebase_app)
 
 
     def initialize_firebase_app(self, name):
