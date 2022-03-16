@@ -3,6 +3,7 @@ import random
 
 class CollectorActionSpaceBuilder:
     available_action_amounts = {
+        'idle': 1,
         'lateral_move': 4,
         'diagonal_move': 4,
         'lateral_collect_move': 4,
