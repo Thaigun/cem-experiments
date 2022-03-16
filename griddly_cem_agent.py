@@ -50,7 +50,9 @@ class EnvHashWrapper():
         if not env._is_clone:
             raise ValueError('The environment given to EnvHashWrapper must be a clone of an original environment.')
         self._env = env
-        self.hash = None
+        self._hash = None
+        self.finished = False
+        self.winner = 0
 
     def __hash__(self) -> int:
         return self.get_hash()
@@ -62,12 +64,20 @@ class EnvHashWrapper():
         return self._env.get_state()
 
     def get_hash(self):
-        if self.hash is None:
-            self.hash = self._env.get_state()['Hash']
-        return self.hash
+        if self._hash is None:
+            if self.finished and self.winner > 0:
+                self._hash = hash(self.winner)
+            else:
+                self._hash = self._env.get_state()['Hash']
+        return self._hash
 
     def clone(self):
         return EnvHashWrapper(self._env.clone())
+
+    def set_winner(self, winner):
+        self.finished = True
+        self.winner = winner
+        self._hash = None
 
     # We change the API here a bit, because we need this object to be immutable
     def step(self, actions):
@@ -86,20 +96,6 @@ class EnvHashWrapper():
     @property
     def player_count(self):
         return self._env.player_count
-
-
-class GameEndState():
-    def __init__(self, winner):
-        self.winner = int(winner)
-
-    def __hash__(self) -> int:
-        return self.winner
-
-    def __eq__(self, __o: object) -> bool:
-        try:
-            return self.winner == __o.winner
-        except:
-            return False
 
 
 class CEM():
@@ -181,12 +177,10 @@ class CEM():
 
         result = {}
         for _ in range(self.samples):
-            clone_env, obs, rew, env_done, info = env.step(env_util.build_action(action, self.player_count, player_id))
+            next_env, obs, rew, env_done, info = env.step(env_util.build_action(action, self.player_count, player_id))
             if (env_done):
                 game_winner = env_util.find_winner(info)
-                next_env = GameEndState(game_winner)
-            else:
-                next_env = clone_env
+                next_env.set_winner(game_winner)
             if next_env not in result:
                 result[next_env] = 0
             result[next_env] += 1.0 / self.samples
@@ -249,7 +243,7 @@ class CEM():
             A dictionary, where the keys are the states(/observations) and the values are the probabilities: {state: probability}
         '''
         def is_final_state():
-            return (action_stepper == len(action_seq) and current_step_agent == perceptor) or isinstance(wrapped_env, GameEndState)
+            return (action_stepper == len(action_seq) and current_step_agent == perceptor) or wrapped_env.finished
 
         def get_final_return_object():
             if return_obs:
@@ -286,10 +280,9 @@ class CEM():
         if not current_step_agent in find_alive_players(wrapped_env):
             return self.build_distribution(wrapped_env, action_seq, next_action_step, actor, next_step_agent, perceptor, return_obs, anticipation, trust_correction)
 
-        actor_conf = self.agent_confs[actor-1]
         pd_s_nstep = {}
         
-        # Find the probability of each acttion for the current agent
+        # Find the probability of each action for the current agent
         assumed_policy = self.find_assumed_policy(current_step_agent, wrapped_env) if actor != current_step_agent else {self.action_spaces[current_step_agent-1][action_seq[action_stepper]]: 1.0}
         
         apply_trust = is_trust_applied()
@@ -339,7 +332,7 @@ class CEM():
     @lru_cache(maxsize=4000)
     def calculate_state_empowerment(self, wrapped_env, actor, perceptor, n_step, trust_correction=False):
         # If the player isn't alive anymore, we assume the empowerment to be zero
-        if not isinstance(wrapped_env, GameEndState) and find_player_pos(wrapped_env, actor) is None:
+        if not wrapped_env.finished and find_player_pos(wrapped_env, actor) is None:
             return 0
 
         # All possible action combinations of length 'step'
@@ -387,16 +380,17 @@ class CEM():
 
     
     def env_to_hashed_obs(self, wrapped_env, actor, perceptor):
-        if isinstance(wrapped_env, GameEndState):
+        if wrapped_env.finished:
             # If the actor is in the winning team, all their actions lead to maximum empowerment
             if actor == wrapped_env.winner:
                 hashed_obs = self.rng.integers(100, 4000000000)
+                return hashed_obs
             # But if the actor loses future actions lead to a minimum empowerment
-            else:
+            elif wrapped_env.winner > 0:
                 hashed_obs = wrapped_env.winner
-        else:
-            latest_obs = wrapped_env.player_last_obs(perceptor)
-            player_pos = find_player_pos(wrapped_env, perceptor)
-            # If the player was not found, we assume the player is dead. In that case, the hashed observation is the player's id
-            hashed_obs = hash_obs(latest_obs, player_pos) if player_pos is not None else hash(actor)
+                return hashed_obs
+        latest_obs = wrapped_env.player_last_obs(perceptor)
+        player_pos = find_player_pos(wrapped_env, perceptor)
+        # If the player was not found, we assume the player is dead. In that case, the hashed observation is the player's id
+        hashed_obs = hash_obs(latest_obs, player_pos) if player_pos is not None else hash(actor)
         return hashed_obs
