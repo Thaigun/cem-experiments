@@ -24,7 +24,7 @@ class CollectorActionSpaceBuilder:
         'melee_attack': ['ranged_attack'],
     }
 
-    max_number_of_actions = 10
+    max_number_of_actions = 8
 
     def build_player_action_space(self):
         def contains_collect_actions(action_set):
