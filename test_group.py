@@ -3,7 +3,6 @@ import game_configuration
 from griddly import GymWrapper, gd
 import os
 from griddly_cem_agent import CEM
-from random import choices
 import policies
 from level_generator import SimpleLevelGenerator
 from firebase_interface import DatabaseInterface
@@ -11,6 +10,7 @@ import database_object
 import env_util
 import action_space_builder
 import random
+from datetime import datetime
 
 
 RUNS_PER_CONFIG = 30
@@ -28,8 +28,10 @@ class Game:
 
 
     def play(self):
+        self.start_time = datetime.now()
         while not self.done:
             self.take_turn()
+        self.end_time = datetime.now()
     
     
     def create_environment(self):
@@ -75,7 +77,7 @@ class Game:
         action_probs_list = list(action_probs.items())
         keys = [x[0] for x in action_probs_list]
         probs = [x[1] for x in action_probs_list]
-        action = choices(keys, weights=probs)[0]
+        action = random.choices(keys, weights=probs)[0]
         return action
 
 
@@ -100,7 +102,7 @@ def run_test_group(conf_to_use):
                 game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
                 game = Game(game_conf, map)
                 game.play()
-                save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game.actions, game.score, game_conf.griddly_description)
+                save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game, game_conf.griddly_description)
 
 
 def build_action_spaces():
@@ -170,8 +172,8 @@ def generate_map(map_param):
     return level_generator.generate()
 
 
-def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map, actions, score, griddly_description):
-    game_run_ref = save_new_game_run(db, game_rules_ref.key, cem_params_key, map_params_key, map, actions, score, griddly_description)
+def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map, game, griddly_description):
+    game_run_ref = save_new_game_run(db, game_rules_ref.key, cem_params_key, map_params_key, map, game, griddly_description)
 
     game_rules_game_runs_ref = game_rules_ref.child('game_runs')
     game_rules_game_runs_ref.push(game_run_ref.key)
@@ -183,10 +185,12 @@ def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map
     map_params_game_runs_ref.push(game_run_ref.key)
 
 
-def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, actions, score, griddly_description):
-    game_run_obj = database_object.GameRunObject(map, actions, score, griddly_description)
+def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, game, griddly_description):
+    game_run_obj = database_object.GameRunObject(map, game.actions, game.score, griddly_description)
     game_run_obj.set_cem_param(cem_params_key)
     game_run_obj.set_map_params(map_params_key)
     game_run_obj.set_game_rules(game_rules_key)
+    game_duration = game.end_time - game.start_time
+    game_run_obj.set_duration_seconds(game_duration.total_seconds())
     game_run_ref = db.save_new_entry('game_runs', game_run_obj.get_data_dict())
     return game_run_ref

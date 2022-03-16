@@ -7,6 +7,7 @@ class GameRunObject:
         self.game_rules = ''
         self.map_params = ''
         self.griddly_description = griddly_description
+        self.duration_seconds = 0
 
     def set_cem_param(self, cem_param):
         self.cem_param = cem_param
@@ -17,6 +18,9 @@ class GameRunObject:
     def set_map_params(self, map_params):
         self.map_params = map_params
 
+    def set_duration_seconds(self, minutes):
+        self.duration_seconds = minutes
+
     def get_data_dict(self):
         return {
             'Map': self.map,
@@ -25,7 +29,8 @@ class GameRunObject:
             'CemParams': self.cem_param,
             'GameRules': self.game_rules,
             'MapParams': self.map_params,
-            'GriddlyDescription': self.griddly_description
+            'GriddlyDescription': self.griddly_description,
+            'DurationSeconds': self.duration_seconds
         }
 
 
