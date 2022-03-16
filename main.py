@@ -34,6 +34,7 @@ def is_memory_available():
 
 
 def resources_available():
+    print('Running processes currently: ' + str(len(test_processes)))
     return is_memory_available() and is_cpu_available()
 
 
