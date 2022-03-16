@@ -4,13 +4,15 @@ from dotenv import dotenv_values
 
 
 class DatabaseInterface:
-    def __init__(self, name):
+    def __init__(self, name, root_path=None):
         try:
             self.firebase_app = firebase_admin.get_app(name)
         except ValueError:
             self.initialize_firebase_app(name)
-        config = dotenv_values('.env')
-        self.database = db.reference(config['DB_ROOT'], self.firebase_app)
+        if root_path is None:
+            config = dotenv_values('.env')
+            root_path = config['DB_ROOT']
+        self.database = db.reference(root_path, self.firebase_app)
 
 
     def initialize_firebase_app(self, name):

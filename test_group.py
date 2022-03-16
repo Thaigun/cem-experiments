@@ -100,7 +100,7 @@ def run_test_group(conf_to_use):
                 game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
                 game = Game(game_conf, map)
                 game.play()
-                save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game.actions, game.score)
+                save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game.actions, game.score, game_conf.griddly_description)
 
 
 def build_action_spaces():
@@ -170,8 +170,8 @@ def generate_map(map_param):
     return level_generator.generate()
 
 
-def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map, actions, score):
-    game_run_ref = save_new_game_run(db, game_rules_ref.key, cem_params_key, map_params_key, map, actions, score)
+def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map, actions, score, griddly_description):
+    game_run_ref = save_new_game_run(db, game_rules_ref.key, cem_params_key, map_params_key, map, actions, score, griddly_description)
 
     game_rules_game_runs_ref = game_rules_ref.child('game_runs')
     game_rules_game_runs_ref.push(game_run_ref.key)
@@ -183,8 +183,8 @@ def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map
     map_params_game_runs_ref.push(game_run_ref.key)
 
 
-def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, actions, score):
-    game_run_obj = database_object.GameRunObject(map, actions, score)
+def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, actions, score, griddly_description):
+    game_run_obj = database_object.GameRunObject(map, actions, score, griddly_description)
     game_run_obj.set_cem_param(cem_params_key)
     game_run_obj.set_map_params(map_params_key)
     game_run_obj.set_game_rules(game_rules_key)

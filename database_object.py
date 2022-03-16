@@ -1,11 +1,12 @@
 class GameRunObject:
-    def __init__(self, map, actions, score):
+    def __init__(self, map, actions, score, griddly_description):
         self.map = map
         self.actions = actions
         self.score = score
         self.cem_param = ''
         self.game_rules = ''
         self.map_params = ''
+        self.griddly_description = griddly_description
 
     def set_cem_param(self, cem_param):
         self.cem_param = cem_param
@@ -23,7 +24,8 @@ class GameRunObject:
             'Score': self.score,
             'CemParams': self.cem_param,
             'GameRules': self.game_rules,
-            'MapParams': self.map_params
+            'MapParams': self.map_params,
+            'GriddlyDescription': self.griddly_description
         }
 
 
