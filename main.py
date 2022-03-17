@@ -38,8 +38,8 @@ def resources_available():
     return is_memory_available() and is_cpu_available()
 
 
-def spawn_test_run():
-    new_process = Process(target=test_group.run_test_group, args=(CONFIG_TO_USE,))
+def spawn_test_run(game_ingredients):
+    new_process = Process(target=test_group.play_and_save, args=game_ingredients)
     new_process.start()
     print('Spawned new process:', new_process.pid)
     test_processes.append(new_process)
@@ -55,15 +55,18 @@ def clean_finished_processes():
 
 if __name__ == '__main__':
     if not PARALLEL:
-        test_group.run_test_group(CONFIG_TO_USE)
+        for game_ingredients in test_group.build_game_instances(CONFIG_TO_USE):
+            test_group.play_and_save(*game_ingredients)
     else:
+        game_generator = test_group.build_game_instances(CONFIG_TO_USE)
         sleep_time = 30
         while True:
             clean_finished_processes()
             # If there are resources, reduce the sleep time a bit, and vice versa.
             if resources_available():
                 sleep_time *= 0.93
-                spawn_test_run()
+                game_ingredients = next(game_generator)
+                spawn_test_run(game_ingredients)
             else:
                 sleep_time /= 0.93
             # It can take a while for the memory consumption to settle, so let's wait a bit.

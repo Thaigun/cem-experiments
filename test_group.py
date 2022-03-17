@@ -81,28 +81,38 @@ class Game:
         return action
 
 
-def run_test_group(conf_to_use):
+def play_and_save(map, player_action_space, npc_action_space, map_param_key, cem_param_key, game_rules_key):
+    db = DatabaseInterface('cem-experiments')
+    cem_parameters = get_cem_parameters(db)
+    game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
+    game = Game(game_conf, map)
+    game.play()
+    game_run_obj = make_game_run_obj(game_rules_key, cem_param_key, map_param_key, map, game, game_conf.griddly_description)
+    game_duration = game.end_time - game.start_time
+    game_run_obj.set_duration_seconds(game_duration.total_seconds())
+    save_experiment_data(db, game_run_obj)
+
+
+def build_game_instances(conf_to_use):
     global_configuration.activate_config_file(conf_to_use)
     global_configuration.set_health_performance_consistency(True)
     #configuration.set_visualise_all(True)
-    player_action_space, npc_action_space = build_action_spaces()
-    db = DatabaseInterface('cem-experiments')
-    game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
-    cem_parameters = get_cem_parameters(db)
-    cem_param_keys = list(cem_parameters)
-    map_parameters = get_map_parameters(db)
-    map_param_keys = list(map_parameters)
-    random.shuffle(cem_param_keys)
-    random.shuffle(map_param_keys)
-    for map_param_key in map_param_keys:
-        map_param = map_parameters.get(map_param_key)
-        for _ in range(RUNS_PER_CONFIG):
-            map = generate_map(map_param)
-            for cem_param_key in cem_param_keys:
-                game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
-                game = Game(game_conf, map)
-                game.play()
-                save_experiment_data(db, game_rules_ref, cem_param_key, map_param_key, map, game, game_conf.griddly_description)
+    while True:
+        player_action_space, npc_action_space = build_action_spaces()
+        db = DatabaseInterface('cem-experiments')
+        game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
+        cem_parameters = get_cem_parameters(db)
+        cem_param_keys = list(cem_parameters)
+        map_parameters = get_map_parameters(db)
+        map_param_keys = list(map_parameters)
+        random.shuffle(cem_param_keys)
+        random.shuffle(map_param_keys)
+        for map_param_key in map_param_keys:
+            map_param = map_parameters.get(map_param_key)
+            for _ in range(RUNS_PER_CONFIG):
+                map = generate_map(map_param)
+                for cem_param_key in cem_param_keys:
+                    yield map, player_action_space, npc_action_space, map_param_key, cem_param_key, game_rules_ref.key
 
 
 def build_action_spaces():
@@ -172,25 +182,27 @@ def generate_map(map_param):
     return level_generator.generate()
 
 
-def save_experiment_data(db, game_rules_ref, cem_params_key, map_params_key, map, game, griddly_description):
-    game_run_ref = save_new_game_run(db, game_rules_ref.key, cem_params_key, map_params_key, map, game, griddly_description)
-
-    game_rules_game_runs_ref = game_rules_ref.child('game_runs')
-    game_rules_game_runs_ref.push(game_run_ref.key)
-
-    cem_params_game_runs_ref = db.get_child_ref('cem_params/' + cem_params_key + '/game_runs')
-    cem_params_game_runs_ref.push(game_run_ref.key)
-
-    map_params_game_runs_ref = db.get_child_ref('map_params/' + map_params_key + '/game_runs')
-    map_params_game_runs_ref.push(game_run_ref.key)
-
-
-def save_new_game_run(db, game_rules_key, cem_params_key, map_params_key, map, game, griddly_description):
+def make_game_run_obj(game_rules_key, cem_params_key, map_params_key, map, game, griddly_description):
     game_run_obj = database_object.GameRunObject(map, game.actions, game.score, griddly_description)
     game_run_obj.set_cem_param(cem_params_key)
     game_run_obj.set_map_params(map_params_key)
     game_run_obj.set_game_rules(game_rules_key)
-    game_duration = game.end_time - game.start_time
-    game_run_obj.set_duration_seconds(game_duration.total_seconds())
+    return game_run_obj
+
+
+def save_experiment_data(db, game_run_obj):
+    game_run_ref = save_new_game_run(db, game_run_obj)
+
+    game_rules_game_runs_ref = db.get_child_ref('game_runs/' + game_run_obj.game_rules + '/game_runs')
+    game_rules_game_runs_ref.push(game_run_ref.key)
+
+    cem_params_game_runs_ref = db.get_child_ref('cem_params/' + game_run_obj.cem_param + '/game_runs')
+    cem_params_game_runs_ref.push(game_run_ref.key)
+
+    map_params_game_runs_ref = db.get_child_ref('map_params/' + game_run_obj.map_params + '/game_runs')
+    map_params_game_runs_ref.push(game_run_ref.key)
+
+
+def save_new_game_run(db, game_run_obj):
     game_run_ref = db.save_new_entry('game_runs', game_run_obj.get_data_dict())
     return game_run_ref
