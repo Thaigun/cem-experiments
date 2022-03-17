@@ -193,7 +193,7 @@ def make_game_run_obj(game_rules_key, cem_params_key, map_params_key, map, game,
 def save_experiment_data(db, game_run_obj):
     game_run_ref = save_new_game_run(db, game_run_obj)
 
-    game_rules_game_runs_ref = db.get_child_ref('game_runs/' + game_run_obj.game_rules + '/game_runs')
+    game_rules_game_runs_ref = db.get_child_ref('game_rules/' + game_run_obj.game_rules + '/game_runs')
     game_rules_game_runs_ref.push(game_run_ref.key)
 
     cem_params_game_runs_ref = db.get_child_ref('cem_params/' + game_run_obj.cem_param + '/game_runs')
