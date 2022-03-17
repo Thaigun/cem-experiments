@@ -2,7 +2,6 @@ from random import choices
 import pygame
 from pygame.locals import VIDEORESIZE
 import env_util
-import global_configuration
 
 def display_arr(screen, arr, video_size, transpose):
     arr_min, arr_max = arr.min(), arr.max()
@@ -12,7 +11,7 @@ def display_arr(screen, arr, video_size, transpose):
     screen.blit(pyg_img, (0, 0))
 
 
-def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_action=None, visualiser_callback=None):
+def play(env, game_conf, cem, transpose=True, fps=30, zoom=None, keys_to_action=None, visualiser_callback=None):
     # Allows one to play the game using keyboard.
     rendered = env.render(observer="global", mode="rgb_array")
 
@@ -53,7 +52,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             player_in_turn = 1
             continue
             
-        current_policy = agents_confs[player_in_turn - 1].policy
+        current_policy = game_conf.agents[player_in_turn - 1].policy
         if current_policy != 'KBM':
             action_probs = current_policy(env, cem, player_in_turn)
             # Select one of the keys randomly, weighted by the values
@@ -66,7 +65,7 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
             full_action = [[0,0] for _ in range(env.player_count)]
             full_action[player_in_turn-1] = list(action)
             action_desc = env_util.action_to_str(env, action)
-            player_name = env_util.agent_id_to_name(agents_confs, player_in_turn)
+            player_name = env_util.agent_id_to_name(game_conf.agents, player_in_turn)
             print(player_name, 'chose action', action_desc)
             obs, rew, env_done, info = env.step(full_action)
             player_in_turn = player_in_turn % env.player_count + 1
@@ -82,15 +81,15 @@ def play(env, agents_confs, cem, transpose=True, fps=30, zoom=None, keys_to_acti
                     elif visualiser_callback is not None and event.key in [ord('0'), ord('1'), ord('2'), ord('3'), ord('4'), ord('5'), ord('p')]:
                         c = chr(event.key)
                         if c == 'p':
-                            visualiser_callback(env, agents_confs, trust_correction=trust_correction)
+                            visualiser_callback(env, game_conf, trust_correction=trust_correction)
                         else:
-                            visualiser_callback(env, agents_confs, int(c)-1, trust_correction=trust_correction)
+                            visualiser_callback(env, game_conf, int(c)-1, trust_correction=trust_correction)
                     elif event.key == ord('t'):
                         trust_correction = not trust_correction
                         print('Trust correction (for visualisations) is', trust_correction)
                     elif event.key == ord('y'):
-                        global_configuration.set_health_performance_consistency(not global_configuration.health_performance_consistency)
-                        print('Health performance consistency is', global_configuration.health_performance_consistency)
+                        game_conf.health_performance_consistency = not game_conf.health_performance_consistency)
+                        print('Health performance consistency is', game_conf.health_performance_consistency)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
                         pressed_keys.remove(event.key)

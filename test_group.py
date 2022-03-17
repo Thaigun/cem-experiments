@@ -11,6 +11,7 @@ import env_util
 import action_space_builder
 import random
 from datetime import datetime
+from create_griddly_env import create_griddly_env
 
 
 RUNS_PER_CONFIG = 30
@@ -35,14 +36,7 @@ class Game:
     
     
     def create_environment(self):
-        env_file_name = self.game_conf.griddly_description
-        current_path = os.path.dirname(os.path.realpath(__file__))
-        self.env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', env_file_name),
-                        shader_path='shaders',
-                        player_observer_type=gd.ObserverType.VECTOR,
-                        global_observer_type=gd.ObserverType.SPRITE_2D,
-                        image_path='./art',
-                        level=0)
+        self.env = create_griddly_env(self.game_conf.griddly_description)
         self.env.reset(level_string=self.map)
 
 
@@ -94,8 +88,6 @@ def play_and_save(map, player_action_space, npc_action_space, map_param_key, cem
 
 
 def build_game_instances(conf_to_use):
-    global_configuration.activate_config_file(conf_to_use)
-    global_configuration.set_health_performance_consistency(True)
     #configuration.set_visualise_all(True)
     while True:
         player_action_space, npc_action_space = build_action_spaces()
@@ -154,8 +146,9 @@ def fetch_data_and_save_if_none(db_ref, path, default_data_objects):
 
 
 def build_game_conf(player_action_space, npc_action_space, cem_param):
-    game_conf = game_configuration.GameConf('collector_game.yaml', 2)
-    game_conf.add_agent('MCTS agent', 1, player_action_space, policies.mcts_policy, policies.uniform_policy)
+    game_conf = game_configuration.GameConf('collector_game.yaml', 2, health_performance_consistency=True)
+    mcts_agent = game_conf.add_agent('MCTS agent', 1, player_action_space, policies.mcts_policy, policies.uniform_policy)
+    mcts_agent.time_limit = 2
     cem_agent_conf = game_conf.add_agent('CEM agent', 2, npc_action_space, policies.maximise_cem_policy, policies.uniform_policy)
     cem_agent_conf.set_empowerment_pairs_from_dict(cem_param['EmpowermentPairs'])
     trust_dict = cem_param['Trust']

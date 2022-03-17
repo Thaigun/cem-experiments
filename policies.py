@@ -1,4 +1,3 @@
-import global_configuration
 from mcts import MCTS
 import env_util
 from datetime import timedelta, datetime
@@ -22,7 +21,7 @@ def maximise_cem_policy(env, cem, player_in_turn, game_conf):
 
 
 def mcts_policy(env, cem, player_in_turn, game_conf):
-    time_limit = global_configuration.time_limit
+    time_limit = game_conf.get_agent_by_id(player_in_turn).time_limit
     action_spaces = env_util.build_action_spaces(env, game_conf.agents)
     mcts = MCTS(env, player_in_turn, action_spaces)
     now = datetime.now()

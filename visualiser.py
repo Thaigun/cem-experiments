@@ -47,7 +47,7 @@ def plot_empowerment_landscape(env, position_emps, title):
     plt.show()
 
 
-def build_landscape(orig_env, player_id, agent_configs, n_step, trust_correction=False, emp_idx=None, samples=1):
+def build_landscape(orig_env, player_id, game_conf, trust_correction=False, emp_idx=None, samples=1):
     '''
     emp_idx: Which empowerment pair to calculate. If None, calculate all.
     '''
@@ -97,7 +97,7 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, trust_correction
         for emp_pair_i, emp_pair in enumerate(emp_pairs):
             if emp_idx is not None and emp_idx != emp_pair_i:
                 continue
-            state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], n_step, trust_correction=trust_correction)
+            state_emp = cem_env.calculate_state_empowerment(EnvHashWrapper(env.clone()), emp_pair[0], emp_pair[1], game_conf.n_step, trust_correction=trust_correction)
             calculated_emps[emp_pair_i][tuple(plr_pos)] = state_emp
         for a in non_blocked_moves(env, player_id, visited_coords):
             env.step(build_full_action(env, a, player_id))
@@ -121,10 +121,11 @@ def build_landscape(orig_env, player_id, agent_configs, n_step, trust_correction
     orientation_fix[player_id-1] = [rotate_action_idx, player_rot]
 
     # Prepare for traversal
-    emp_pairs = [(emp['Actor'], emp['Perceptor']) for emp in agent_configs[player_id-1]['EmpowermentPairs']]
-    calculated_emps = [{} for _ in agent_configs[player_id-1]['EmpowermentPairs']]
+    player_config = game_conf.agents[player_id-1]
+    emp_pairs = [(emp.actor, emp.perceptor) for emp in player_config.empowerment_pairs]
+    calculated_emps = [{} for _ in player_config.empowerment_pairs]
     visited_coords = set()
-    cem_env = CEM(env, agent_configs, samples=samples)
+    cem_env = CEM(env, game_conf, samples=samples)
 
     traverse(env, player_id, calculated_emps, visited_coords, emp_pairs, cem_env, orientation_fix)
 

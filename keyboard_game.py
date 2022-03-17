@@ -1,20 +1,21 @@
-import os
-from multi_agent_play import play
-from griddly import GymWrapper, gd
+import multi_agent_play
 from griddly_cem_agent import CEM
 import visualiser
 import policies
 import global_configuration
 import env_util
+from create_griddly_env import create_griddly_env
+import game_configuration
 
 
-def visualise_landscape(env, agents_confs, emp_idx=None, trust_correction=False):
+def visualise_landscape(env, game_conf, emp_idx=None, trust_correction=False):
     '''
     emp_idx: 
     None -> visualise all
     -1 -> visualise the weighted full cem
     >0 -> visualise the cem pair with the given index
     '''
+    agents_confs = game_conf.agents
     # Find the player id of the agent with CEM policy
     visualise_player = next(a.player_id for a in agents_confs if a.policy == policies.maximise_cem_policy)
     empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, global_configuration.n_step, trust_correction, None if emp_idx == -1 else emp_idx)
@@ -43,37 +44,31 @@ def visualise_landscape(env, agents_confs, emp_idx=None, trust_correction=False)
 
 if __name__ == '__main__':
     USE_CONF = "collector"
+    conf_dict = game_configuration.load_conf_dict(USE_CONF)
+    game_conf = game_configuration.game_conf_from_data_dict(conf_dict)
     global_configuration.set_verbose_calculation(True)
-    global_configuration.activate_config_file(USE_CONF)
 
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    env = GymWrapper(os.path.join(current_path, 'griddly_descriptions', global_configuration.griddly_description),
-                     shader_path='shaders',
-                     player_observer_type=gd.ObserverType.VECTOR,
-                     global_observer_type=gd.ObserverType.SPRITE_2D,
-                     image_path='./art',
-                     level=0)
-
+    env = create_griddly_env('collector_game.yaml')
     env.reset()
 
-    cem_agent_conf = [agent_conf for agent_conf in global_configuration.agents if agent_conf.policy == policies.maximise_cem_policy]
+    cem_agent_conf = [agent_conf for agent_conf in game_conf.agents if agent_conf.policy == policies.maximise_cem_policy]
     if cem_agent_conf:
+        cem_agent_conf = cem_agent_conf[0]
         print("Use the following keys to print different empowerments")
         for emp_conf_i, emp_conf in enumerate(cem_agent_conf.empowerment_pairs):
-            print(f'{emp_conf_i + 1}: {env_util.agent_id_to_name(global_configuration.agents, emp_conf.actor)} -> {env_util.agent_id_to_name(global_configuration.agents, emp_conf.perceptor)}')
+            print(f'{emp_conf_i + 1}: {env_util.agent_id_to_name(game_conf.agents, emp_conf.actor)} -> {env_util.agent_id_to_name(game_conf.agents, emp_conf.perceptor)}')
         print("0: Weighted full-CEM")
         print("P: All")
     
     print("Press T to toggle trust correction on or off for the visualisation (DOESN'T APPLY TO AGENT DECISIONS)")
     print("Press Y to toggle health-performance consistency on or off (APPLIES TO AGENT DECISIONS)")
 
-    action_names = env.gdy.get_action_names()
-    reserved_keys = ['p', 't', 'y', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
-
-    kbm_players = [a for a in global_configuration.agents if a.policy == 'KBM']
+    kbm_players = [a for a in game_conf.agents if a.policy == 'KBM']
     if len(kbm_players) > 1:
         raise Exception('Only one KBM player is supported')
 
+    action_names = env.gdy.get_action_names()
+    reserved_keys = ['p', 't', 'y', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
     key_mapping = None
     if len(kbm_players) == 1:
         kbm_player = kbm_players[0]
@@ -93,6 +88,6 @@ if __name__ == '__main__':
                     raise Exception('Ill conf. Reserved key: ' + c)
                 key_mapping[tuple([ord(c)])] = [action_names.index(action_name), c_i + 1]
     
-    cem = CEM(env, global_configuration.agents) if cem_agent_conf else None
+    cem = CEM(env, game_conf) if cem_agent_conf else None
 
-    play(env, agents_confs=global_configuration.agents, cem=cem, fps=30, zoom=3, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)
+    multi_agent_play.play(env, game_conf, cem=cem, fps=30, zoom=3, keys_to_action=key_mapping, visualiser_callback=visualise_landscape)

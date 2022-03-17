@@ -192,7 +192,7 @@ class CEM():
 
 
     def get_health_ratio(self, env, player_id):
-        if global_configuration.health_performance_consistency:
+        if self.game_conf.health_performance_consistency:
             player_health = find_player_health(env.get_state(), player_id)
             if player_health is not None:
                 health_ratio = player_health / self.agent_confs[player_id-1].max_health

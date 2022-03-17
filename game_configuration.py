@@ -1,46 +1,41 @@
 import policies
+import yaml
 
 
 class GameConf:
-    def __init__(self, griddly_description, n_step):
+    def __init__(self, griddly_description, n_step, health_performance_consistency=False):
         self.griddly_description = griddly_description
         self.n_step = n_step
         self.agents = []
+        self.health_performance_consistency = health_performance_consistency
+
+
+    def get_agent_by_id(self, agent_id):
+        for agent in self.agents:
+            if agent.player_id == agent_id:
+                return agent
+        return None
 
 
     def set_agents_from_dict(self, agent_conf_dict):
         agent_confs = []
         for agent_conf in agent_conf_dict:
-            new_agent_conf = AgentConf(agent_conf['Name'], agent_conf['PlayerId'])
+            agent_name = agent_conf['Name'] if 'Name' in agent_conf else 'Agent' + str(agent_conf['PlayerId'])
+            new_agent_conf = AgentConf(agent_name, agent_conf['PlayerId'])
+            new_agent_conf.action_space = agent_conf['Actions']
             new_agent_conf.policy = getattr(policies, agent_conf['Policy'])
             new_agent_conf.assumed_policy = getattr(policies, agent_conf['AssumedPolicy'])
             if 'EmpowermentPairs' in agent_conf:
-                new_agent_conf.empowerment_pairs = self.empowerment_pairs_from_dict(agent_conf['EmpowermentPairs'])
+                new_agent_conf.set_empowerment_pairs_from_dict(agent_conf['EmpowermentPairs'])
             new_agent_conf.action_space = agent_conf['Actions']
             if 'MaxHealth' in agent_conf:
                 new_agent_conf.max_health = agent_conf['MaxHealth']
             if 'Trust' in agent_conf:
-                new_agent_conf.trust = self.trust_conf_from_dict(agent_conf['Trust'])
+                new_agent_conf.set_trust_from_dict(agent_conf['Trust'])
+            if 'TimeLimit' in agent_conf:
+                new_agent_conf.time_limit = agent_conf['TimeLimit']
             agent_confs.append(new_agent_conf)
         self.agents = agent_confs
-
-
-    def empowerment_pairs_from_dict(self, empowerment_pairs_dict):
-        empowerment_pairs = []
-        for empowerment_pair_conf in empowerment_pairs_dict:
-            empowerment_pairs.append(EmpowermentPairConf(empowerment_pair_conf['Actor'],
-                                                        empowerment_pair_conf['Perceptor'],
-                                                        empowerment_pair_conf['Weight']))
-        return empowerment_pairs
-
-
-    def trust_conf_from_dict(self, trust_conf_dict):
-        trust_confs = []
-        for trust_conf in trust_conf_dict:
-            trust_confs.append(TrustConf(trust_conf['PlayerId'],
-                                        trust_conf['Anticipation'],
-                                        trust_conf['Steps']))
-        return trust_confs
 
 
     def add_agent(self, name, agent_id, action_space, policy, assumed_policy):
@@ -61,6 +56,7 @@ class AgentConf:
         self.action_space = []
         self.max_health = 2
         self.trust = None
+        self.time_limit = 2
 
     def set_empowerment_pairs_from_dict(self, emp_pair_dict):
         empowerment_pairs = []
@@ -94,3 +90,17 @@ class TrustConf:
         self.player_id = player_id
         self.anticipation = anticipation
         self.steps = steps
+
+
+def load_conf_dict(conf_name):
+    with open('game_conf.yaml', 'r') as f:
+        return yaml.safe_load(f)[conf_name]
+
+
+def game_conf_from_data_dict(data_object):
+    health_performance_consistency = data_object['HealthPerformanceConsistency'] if 'HealthPerformanceConsistency' in data_object else False
+    game_conf = GameConf(data_object['GriddlyDescription'],
+                         data_object['NStep'],
+                         health_performance_consistency)
+    game_conf.set_agents_from_dict(data_object['Agents'])
+    return game_conf

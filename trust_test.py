@@ -1,7 +1,7 @@
 import os
 from griddly import GymWrapperFactory, gd, GymWrapper
 from visualiser import plot_empowerment_landscape, build_landscape, emp_map_to_str
-import global_configuration
+import game_configuration
 
 if __name__ == '__main__':
     wrapper = GymWrapperFactory()
@@ -13,20 +13,24 @@ if __name__ == '__main__':
                      level=0)
 
     player_id = 2
-    global_configuration.activate_config_file("trust")
-    emp_pairs = [(emp.actor, emp.perceptor) for emp in global_configuration.agents[player_id-1].empowerment_pairs]
+
+    data_object = game_configuration.load_conf_dict('trust')
+    game_conf = game_configuration.game_conf_from_data_dict(data_object)
+
+    emp_pairs = [(emp.actor, emp.perceptor) for emp in game_conf.agents[player_id-1].empowerment_pairs]
     
     print('With trust correction:')
     env.reset()
-    calculated_emps = build_landscape(env, player_id, global_configuration.agents, global_configuration.n_step, trust_correction=True)
+    calculated_emps = build_landscape(env, player_id, game_conf, trust_correction=True)
     for emp_pair_i, emp_pair in enumerate(emp_pairs):
         print(emp_map_to_str(calculated_emps[emp_pair_i]))
         plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
 
     print('Without trust correction:')
-    global_configuration.activate_config_file("no_trust")
+    data_object = game_configuration.load_conf_dict('no_trust')
+    game_conf = game_configuration.game_conf_from_data_dict(data_object)
     env.reset()
-    calculated_emps = build_landscape(env, player_id, global_configuration.agents, global_configuration.n_step, trust_correction=True)
+    calculated_emps = build_landscape(env, player_id, game_conf, trust_correction=True)
     for emp_pair_i, emp_pair in enumerate(emp_pairs):
         print(emp_map_to_str(calculated_emps[emp_pair_i]))
         plot_empowerment_landscape(env, calculated_emps[emp_pair_i], 'Empowerment: ' + str(emp_pair))
