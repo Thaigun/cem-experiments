@@ -1,7 +1,5 @@
-import global_configuration
 import game_configuration
 from griddly import GymWrapper, gd
-import os
 from griddly_cem_agent import CEM
 import policies
 from level_generator import SimpleLevelGenerator
@@ -89,15 +87,15 @@ def play_and_save(map, player_action_space, npc_action_space, map_param_key, cem
     save_experiment_data(db, game_run_obj)
 
 
-def build_game_instances(conf_to_use):
-    #configuration.set_visualise_all(True)
+def build_game_instances():
+    db = DatabaseInterface('cem-experiments')
+    cem_parameters = get_cem_parameters(db)
+    map_parameters = get_map_parameters(db)
+
     while True:
         player_action_space, npc_action_space = build_action_spaces()
-        db = DatabaseInterface('cem-experiments')
         game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
-        cem_parameters = get_cem_parameters(db)
         cem_param_keys = list(cem_parameters)
-        map_parameters = get_map_parameters(db)
         map_param_keys = list(map_parameters)
         random.shuffle(cem_param_keys)
         random.shuffle(map_param_keys)
@@ -117,6 +115,7 @@ def build_action_spaces():
 
 
 def get_cem_parameters(db_ref):
+    global synced_cem_params
     if synced_cem_params is not None:
         return synced_cem_params
     new_cem_param_objects = [
@@ -130,6 +129,7 @@ def get_cem_parameters(db_ref):
 
 
 def get_map_parameters(db_ref):
+    global synced_map_params
     if synced_map_params is not None:
         return synced_map_params
     new_map_param_objects = [

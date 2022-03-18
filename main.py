@@ -5,10 +5,7 @@ import psutil
 import test_group
 
 
-CONFIG_TO_USE = 'collector'
 PARALLEL = True
-
-
 test_processes = []
 
 
@@ -55,10 +52,10 @@ def clean_finished_processes():
 
 if __name__ == '__main__':
     if not PARALLEL:
-        for game_ingredients in test_group.build_game_instances(CONFIG_TO_USE):
+        for game_ingredients in test_group.build_game_instances():
             test_group.play_and_save(*game_ingredients)
     else:
-        game_generator = test_group.build_game_instances(CONFIG_TO_USE)
+        game_generator = test_group.build_game_instances()
         sleep_time = 30
         while True:
             clean_finished_processes()
