@@ -69,5 +69,6 @@ if __name__ == '__main__':
                 spawn_test_run(game_ingredients)
             else:
                 sleep_time /= 0.93
+            sleep_time = max(5, min(sleep_time, 90))
             # It can take a while for the memory consumption to settle, so let's wait a bit.
             time.sleep(sleep_time)
