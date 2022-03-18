@@ -115,23 +115,16 @@ def build_action_spaces():
 
 
 def get_cem_parameters(db_ref):
-    global synced_cem_params
-    if synced_cem_params is not None:
-        return synced_cem_params
     new_cem_param_objects = [
         database_object.CEMParamObject([2,1,2],[2,1,1],[0.5, 0.1,-0.5]),
         database_object.CEMParamObject([2,1,2],[2,1,1],[0.2, 0.5, 0.3], True),
         database_object.CEMParamObject([2,1,2],[2,1,1],[0,   0,   0]),
     ]
     cem_param_data = fetch_data_and_save_if_none(db_ref, 'cem_params', new_cem_param_objects)
-    synced_cem_params = cem_param_data
     return cem_param_data
 
 
 def get_map_parameters(db_ref):
-    global synced_map_params
-    if synced_map_params is not None:
-        return synced_map_params
     new_map_param_objects = [
         database_object.MapParamObject(8, 8, {'w': 15, 's': 15}),
         database_object.MapParamObject(8, 8, {'w': 6, 's': 15}),
@@ -139,7 +132,6 @@ def get_map_parameters(db_ref):
         database_object.MapParamObject(14, 14, {'w': 10, 's': 15}),
     ]
     map_param_data = fetch_data_and_save_if_none(db_ref, 'map_params', new_map_param_objects)
-    synced_map_params = map_param_data
     return map_param_data
 
 
