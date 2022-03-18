@@ -14,7 +14,7 @@ def is_cpu_available():
     our_cpu_usage = sum([process.cpu_percent(interval=0.1) for process in child_processes]) / psutil.cpu_count() / 100
     total_cpu_usage = psutil.cpu_percent(interval=0.2) / 100
     other_cpu_usage = total_cpu_usage - our_cpu_usage
-    our_max_cpu_usage = 0.3 * (1-other_cpu_usage)
+    our_max_cpu_usage = 0.5 * (1-other_cpu_usage)
     cpu_bound = floor(psutil.cpu_count() * our_max_cpu_usage)
     print('Our CPU usage:', our_cpu_usage, 'total usage:', total_cpu_usage, 'other usage:', other_cpu_usage, 'our max usage:', our_max_cpu_usage, 'our bound:', cpu_bound)
     return cpu_bound > len(test_processes)
