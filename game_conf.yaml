@@ -125,6 +125,7 @@ fight:
       MaxHealth: 2
       Policy: "maximise_cem_policy"
       AssumedPolicy: "uniform_policy"
+      Actions: ["idle", "move", "attack"]
       EmpowermentPairs:
         - Actor: 2
           Perceptor: 2

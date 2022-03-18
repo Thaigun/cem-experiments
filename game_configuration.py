@@ -8,6 +8,7 @@ class GameConf:
         self.n_step = n_step
         self.agents = []
         self.health_performance_consistency = health_performance_consistency
+        self.keys = None
 
 
     def get_agent_by_id(self, agent_id):
@@ -23,7 +24,10 @@ class GameConf:
             agent_name = agent_conf['Name'] if 'Name' in agent_conf else 'Agent' + str(agent_conf['PlayerId'])
             new_agent_conf = AgentConf(agent_name, agent_conf['PlayerId'])
             new_agent_conf.action_space = agent_conf['Actions']
-            new_agent_conf.policy = getattr(policies, agent_conf['Policy'])
+            if agent_conf['Policy'] != 'KBM':
+                new_agent_conf.policy = getattr(policies, agent_conf['Policy'])
+            else:
+                new_agent_conf.policy = 'KBM'
             new_agent_conf.assumed_policy = getattr(policies, agent_conf['AssumedPolicy'])
             if 'EmpowermentPairs' in agent_conf:
                 new_agent_conf.set_empowerment_pairs_from_dict(agent_conf['EmpowermentPairs'])
@@ -34,6 +38,8 @@ class GameConf:
                 new_agent_conf.set_trust_from_dict(agent_conf['Trust'])
             if 'TimeLimit' in agent_conf:
                 new_agent_conf.time_limit = agent_conf['TimeLimit']
+            if 'Keys' in agent_conf:
+                new_agent_conf.keys = agent_conf['Keys']
             agent_confs.append(new_agent_conf)
         self.agents = agent_confs
 

@@ -18,13 +18,13 @@ def visualise_landscape(env, game_conf, emp_idx=None, trust_correction=False):
     agents_confs = game_conf.agents
     # Find the player id of the agent with CEM policy
     visualise_player = next(a.player_id for a in agents_confs if a.policy == policies.maximise_cem_policy)
-    empowerment_maps = visualiser.build_landscape(env, visualise_player, agents_confs, global_configuration.n_step, trust_correction, None if emp_idx == -1 else emp_idx)
+    empowerment_maps = visualiser.build_landscape(env, visualise_player, game_conf, trust_correction, None if emp_idx == -1 else emp_idx)
     # TODO: If empowerment_maps is a dict of dicts, does the enumerate work anymore?
     for i, emp_map in enumerate(empowerment_maps):
         if i != emp_idx and emp_idx is not None:
             continue
         emp_pair_data = agents_confs[visualise_player-1].empowerment_pairs[i]
-        title = 'Empowerment: ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.actor) + ' -> ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.perceptor) + ', steps: ' + str(global_configuration.n_step)
+        title = 'Empowerment: ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.actor) + ' -> ' + env_util.agent_id_to_name(agents_confs, emp_pair_data.perceptor) + ', steps: ' + str(game_conf.n_step)
         print(title)
         print(visualiser.emp_map_to_str(emp_map))
         visualiser.plot_empowerment_landscape(env, emp_map, title)
@@ -37,18 +37,18 @@ def visualise_landscape(env, game_conf, emp_idx=None, trust_correction=False):
             for emp_pair_i, map in enumerate(empowerment_maps):
                 cem_sum += map[pos] * agents_confs[visualise_player-1].empowerment_pairs[emp_pair_i].weight
             cem_map[pos] = cem_sum
-        print('Weighted CEM map; steps: ' + str(global_configuration.n_step))
+        print('Weighted CEM map; steps: ' + str(game_conf.n_step))
         print(visualiser.emp_map_to_str(cem_map))
-        visualiser.plot_empowerment_landscape(env, cem_map, 'Weighted and summed CEM heatmap, steps: ' + str(global_configuration.n_step))
+        visualiser.plot_empowerment_landscape(env, cem_map, 'Weighted and summed CEM heatmap, steps: ' + str(game_conf.n_step))
 
 
 if __name__ == '__main__':
-    USE_CONF = "collector"
+    USE_CONF = "fight"
     conf_dict = game_configuration.load_conf_dict(USE_CONF)
     game_conf = game_configuration.game_conf_from_data_dict(conf_dict)
     global_configuration.set_verbose_calculation(True)
 
-    env = create_griddly_env('collector_game.yaml')
+    env = create_griddly_env(game_conf.griddly_description)
     env.reset()
 
     cem_agent_conf = [agent_conf for agent_conf in game_conf.agents if agent_conf.policy == policies.maximise_cem_policy]
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     if len(kbm_players) == 1:
         kbm_player = kbm_players[0]
         key_mapping = {}
-        key_action_pairs = zip(kbm_player['Keys'], kbm_player['Actions'])
+        key_action_pairs = zip(kbm_player.keys, kbm_player.action_space)
         print('Use the following keys to control the agents:')
         for key, action_name in key_action_pairs:
             print(f'{key}: {action_name}')

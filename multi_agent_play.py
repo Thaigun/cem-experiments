@@ -16,16 +16,6 @@ def play(env, game_conf, cem, transpose=True, fps=30, zoom=None, keys_to_action=
     rendered = env.render(observer="global", mode="rgb_array")
 
     if keys_to_action is not None:
-        if hasattr(env, "get_keys_to_action"):
-            keys_to_action = env.get_keys_to_action()
-        elif hasattr(env.unwrapped, "get_keys_to_action"):
-            keys_to_action = env.unwrapped.get_keys_to_action()
-        else:
-            assert False, (
-                env.spec.id
-                + " does not have explicit key to action mapping, "
-                + "please specify one manually"
-            )
         relevant_keys = set(sum(map(list, keys_to_action.keys()), []))
     else:
         relevant_keys = set()
@@ -54,7 +44,7 @@ def play(env, game_conf, cem, transpose=True, fps=30, zoom=None, keys_to_action=
             
         current_policy = game_conf.agents[player_in_turn - 1].policy
         if current_policy != 'KBM':
-            action_probs = current_policy(env, cem, player_in_turn)
+            action_probs = current_policy(env, cem, player_in_turn, game_conf)
             # Select one of the keys randomly, weighted by the values
             # I'm doing it like this because I'm scared the order won't be stable if I access the keys and values separately.
             action_probs_list = list(action_probs.items())
@@ -88,7 +78,7 @@ def play(env, game_conf, cem, transpose=True, fps=30, zoom=None, keys_to_action=
                         trust_correction = not trust_correction
                         print('Trust correction (for visualisations) is', trust_correction)
                     elif event.key == ord('y'):
-                        game_conf.health_performance_consistency = not game_conf.health_performance_consistency)
+                        game_conf.health_performance_consistency = not game_conf.health_performance_consistency
                         print('Health performance consistency is', game_conf.health_performance_consistency)
                 elif event.type == pygame.KEYUP:
                     if event.key in relevant_keys:
