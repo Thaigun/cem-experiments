@@ -30,7 +30,4 @@ class DatabaseInterface:
     
     def get_child_ref(self, path):
         return self.database.child(path)
-
-    
-    def fetch_all(self):
-        return self.database.get()
+        
