@@ -126,10 +126,10 @@ def get_cem_parameters(db_ref):
 
 def get_map_parameters(db_ref):
     new_map_param_objects = [
-        database_object.MapParamObject(8, 8, {'w': 10, 's': 15}),
-        database_object.MapParamObject(8, 8, {'w': 4, 's': 15}),
-        database_object.MapParamObject(14, 14, {'w': 30, 's': 15}),
-        database_object.MapParamObject(8, 8, {'w': 10, 's': 15}),
+        database_object.MapParamObject(8, 8, {'w': 15, 's': 15}),
+        database_object.MapParamObject(8, 8, {'w': 6, 's': 15}),
+        database_object.MapParamObject(14, 14, {'w': 50, 's': 15}),
+        database_object.MapParamObject(14, 14, {'w': 10, 's': 15}),
     ]
     map_param_refs = fetch_data_and_save_if_none(db_ref, 'map_params', new_map_param_objects)
     return map_param_refs
