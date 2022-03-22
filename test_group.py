@@ -75,10 +75,11 @@ class Game:
         return action
 
 
-def play_and_save(map, player_action_space, npc_action_space, map_param_key, cem_param_key, game_rules_key):
+def play_and_save(map, player_action_space, npc_action_space, map_param_key, cem_param_obj, game_rules_key):
     db = DatabaseInterface('cem-experiments')
-    cem_parameters = get_cem_parameters(db)
-    game_conf = build_game_conf(player_action_space, npc_action_space, cem_parameters.get(cem_param_key))
+    cem_param_key = list(cem_param_obj)[0]
+    cem_params = cem_param_obj.get(cem_param_key)
+    game_conf = build_game_conf(player_action_space, npc_action_space, cem_params)
     game = Game(game_conf, map)
     game.play()
     game_run_obj = make_game_run_obj(game_rules_key, cem_param_key, map_param_key, map, game, game_conf.griddly_description)
@@ -104,7 +105,8 @@ def build_game_instances():
             for _ in range(RUNS_PER_CONFIG):
                 map = generate_map(map_param)
                 for cem_param_key in cem_param_keys:
-                    yield map, player_action_space, npc_action_space, map_param_key, cem_param_key, game_rules_ref.key
+                    cem_param_obj = { cem_param_key: cem_parameters.get(cem_param_key) }
+                    yield map, player_action_space, npc_action_space, map_param_key, cem_param_obj, game_rules_ref.key
 
 
 def build_action_spaces():
