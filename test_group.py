@@ -116,7 +116,7 @@ def build_action_spaces():
 
 def get_cem_parameters(db_ref):
     new_cem_param_objects = [
-        database_object.CEMParamObject([2,1,2],[2,1,1],[0.5, 0.1,-0.5]),
+        database_object.CEMParamObject([2,1,2],[2,1,1],[0.5,-0.5, 0.1]),
         database_object.CEMParamObject([2,1,2],[2,1,1],[0.2, 0.5, 0.3], True),
         database_object.CEMParamObject([2,1,2],[2,1,1],[0,   0,   0]),
     ]
