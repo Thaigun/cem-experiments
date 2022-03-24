@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from griddly_cem_agent import find_player_pos_vanilla, CEM, EnvHashWrapper
 import numpy as np
-import random
 
 
 def emp_map_to_str(position_emps):
