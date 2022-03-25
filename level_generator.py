@@ -72,8 +72,6 @@ class SimpleLevelGenerator(LevelGenerator):
             self._find_connected_traversables(starting_square, level_string_lines, visited, directions)
             free_square_count = self.width * self.height - self.object_amounts[self.bounding_obj_char]
             if len(visited) < free_square_count * 0.35:
-                print('Rejected level because of too many unconnected squares')
-                print(len(visited), '<', free_square_count)
                 return False
         return True
             

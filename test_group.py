@@ -92,19 +92,20 @@ def build_game_instances():
     db = DatabaseInterface('cem-experiments')
     cem_parameters = get_cem_parameters(db)
     map_parameters = get_map_parameters(db)
+    map_param_keys = list(map_parameters)
+    cem_param_keys = list(cem_parameters)
     
     maps_per_param_key = {}
     for map_param_key in map_param_keys:
-            map_param = map_parameters.get(map_param_key)
-            maps_per_param_key[map_param_key] = generate_maps(map_param)
+        map_param = map_parameters.get(map_param_key)
+        maps_per_param_key[map_param_key] = generate_maps(map_param)
 
     while True:
         player_action_space, npc_action_space = build_action_spaces()
         game_rules_ref = try_save_game_rules(db, player_action_space, npc_action_space)
         if game_rules_ref is None:
+            print('SKIPPING game rules', player_action_space, npc_action_space)
             continue
-        cem_param_keys = list(cem_parameters)
-        map_param_keys = list(map_parameters)
         for map_param_key in map_param_keys:
             for map in maps_per_param_key[map_param_key]:
                 for cem_param_key in cem_param_keys:
@@ -118,7 +119,7 @@ def try_save_game_rules(db, player_action_space, npc_action_space):
     if db.child_exists('reserved_rule_hashes/' + str(rules_hash)):
         return None
     db.save_data_in_path('reserved_rule_hashes/' + str(rules_hash), rules_hash)
-    game_rules_ref = db.save_new_entry('game_rules', rules_obj.get_data_dict())
+    game_rules_ref = db.add_new_entry('game_rules', rules_obj.get_data_dict())
     return game_rules_ref
 
 
@@ -155,7 +156,7 @@ def fetch_data_and_save_if_none(db_ref, path, default_data_objects):
     path_data = path_ref.get()
     if path_data is None:
         for data_obj in default_data_objects:
-            db_ref.save_new_entry(path, data_obj.get_data_dict())
+            db_ref.add_new_entry(path, data_obj.get_data_dict())
         path_data = path_ref.get()
     return path_data
 
@@ -210,5 +211,5 @@ def save_experiment_data(db, game_run_obj):
 
 
 def save_new_game_run(db, game_run_obj):
-    game_run_ref = db.save_new_entry('game_runs', game_run_obj.get_data_dict())
+    game_run_ref = db.add_new_entry('game_runs', game_run_obj.get_data_dict())
     return game_run_ref
