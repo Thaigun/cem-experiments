@@ -29,7 +29,7 @@ class CollectorActionSpaceBuilder:
         'rotate': ['melee_attack', 'ranged_attack', 'collect_from_ahead']
     }
 
-    max_number_of_actions = 8
+    max_number_of_actions = 6
 
     def build_player_action_space(self):
         def contains_collect_actions(action_set):
