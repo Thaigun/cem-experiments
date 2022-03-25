@@ -69,7 +69,7 @@ Actions:
             - mov: _dest
             - rot: _dir
         Dst:
-          Object: _empty
+          Object: [_empty, star]
 
   - Name: diagonal_move
     InputMapping:
@@ -97,7 +97,7 @@ Actions:
             - mov: _dest
             - rot: _dir
         Dst:
-          Object: _empty
+          Object: [_empty, star]
 
   - Name: lateral_collect_move
     InputMapping:
@@ -340,7 +340,7 @@ Actions:
       Relative: true
       Inputs:
         1:
-          OrientationVector: [0, -1]
+          VectorToDest: [0, -1]
           Description: 'front'
     Behaviours:
       - Src:
@@ -386,20 +386,6 @@ Actions:
       - Src:
           Object: projectile
           Commands:
-            - mov: _dest
-            - exec:
-                Action: ranged_projectile
-        Dst:
-          Object: _empty
-      - Src:
-          Object: projectile
-          Commands:
-            - remove: true
-        Dst:
-          Object: [wall, projectile]
-      - Src:
-          Object: projectile
-          Commands:
             - remove: true
         Dst:
           Object: avatar
@@ -409,6 +395,21 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
+      - Src:
+          Object: projectile
+          Commands:
+            - mov: _dest
+            - exec:
+                Action: ranged_projectile
+        Dst:
+          Object: [star, _empty]
+      - Src:
+          Object: projectile
+          Commands:
+            - remove: true
+        Dst:
+          Object: [wall, projectile]
+      
 
   - Name: choose_icon
     InputMapping:
