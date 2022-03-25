@@ -1,3 +1,5 @@
+import hashlib
+
 class GameRunObject:
     def __init__(self, map, actions, score, griddly_description):
         self.map = map
@@ -47,10 +49,11 @@ class GameRulesObject:
             'GameRuns': self.game_runs
         }
 
-    def __hash__(self) -> int:
-        plr_action_space_hash = hash(tuple(self.player_action_space))
-        npc_action_space_hash = hash(tuple(self.npc_action_space))
-        return hash(plr_action_space_hash ^ npc_action_space_hash)
+    def __hash__(self):
+        plr_action_space_str = str(sorted(self.player_action_space))
+        npc_action_space_str = str(sorted(self.npc_action_space))
+        action_spaces_bytes = bytes(plr_action_space_str + npc_action_space_str, 'utf-8')
+        return int(hashlib.md5(action_spaces_bytes).hexdigest(), 16)
 
 
 class CEMParamObject:
