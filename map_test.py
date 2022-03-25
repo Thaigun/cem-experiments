@@ -7,10 +7,10 @@ if __name__ == "__main__":
         'bounding_obj_char': 'w',
         'player_count': 2,
         'obj_char_to_amount': {
-            'w': 6,
+            'w': 15,
             's': 15
         }
     }
     generator = level_generator.SimpleLevelGenerator(map_config)
     for _ in range(1):
-        generator.generate()
+        print(generator.generate())

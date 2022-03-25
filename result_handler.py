@@ -103,11 +103,6 @@ def select_with_run_score(full_data, min_score, max_score):
     return selected_runs
 
 
-def key_func(key):
-    hashed = hash(key[0])
-    return hashed
-
-
 def plot_cem_diff_raincloud(full_data, available_runs, emp_param_names):
     cem_keys = list(full_data['cem_params'].keys())
 

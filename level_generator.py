@@ -32,7 +32,7 @@ class SimpleLevelGenerator(LevelGenerator):
                         tile_obj = self._pseudo_random_object(objects_left)
                         level_sting_lines[y].append(tile_obj)
                         objects_left[tile_obj] -= 1
-            valid_candidate = self.test_connectedness(level_sting_lines)
+            valid_candidate = self.test_lateral_connectedness(level_sting_lines) and self.test_diagonal_connectedness(level_sting_lines)
         self.level = "\n".join([" ".join(line) for line in level_sting_lines])
         return self.level
 
@@ -42,23 +42,48 @@ class SimpleLevelGenerator(LevelGenerator):
         random_object = choices(list(objects_left.keys()), weights=list(objects_left.values()))[0]
         return random_object
 
-    def test_connectedness(self, level_string_lines):
+    def test_lateral_connectedness(self, level_string_lines):
         # Assumes that the bounding character is the only blocking character
+        current_pos = None
         for y, line in enumerate(level_string_lines):
             for x, char in enumerate(line):
                 if char != self.bounding_obj_char:
                     current_pos = (x, y)
+                    break
+            if current_pos is not None:
+                break
         # Depth-first search to find all squares that are not equal to the bounding_obj_char
         visited = set([current_pos])
-        self._find_connected_traversables(current_pos, level_string_lines, visited)
+        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+        self._find_connected_traversables(current_pos, level_string_lines, visited, directions)
         return len(visited) == self.width * self.height - self.object_amounts[self.bounding_obj_char]
 
-    def _find_connected_traversables(self, current_pos, level_string_lines, visited):
-        for direction in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+    def test_diagonal_connectedness(self, level_string_lines):
+        def find_starting_square(level_str_lines, find_str):
+            for y, line in enumerate(level_str_lines):
+                for x, char in enumerate(line):
+                    if char == find_str:
+                        return (x, y)
+
+        starting_squares = [find_starting_square(level_string_lines, 'P1'), find_starting_square(level_string_lines, 'P2')]
+        directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+        for starting_square in starting_squares:
+            visited = set([starting_square])
+            self._find_connected_traversables(starting_square, level_string_lines, visited, directions)
+            free_square_count = self.width * self.height - self.object_amounts[self.bounding_obj_char]
+            if len(visited) < free_square_count * 0.35:
+                print('Rejected level because of too many unconnected squares')
+                print(len(visited), '<', free_square_count)
+                return False
+        return True
+            
+
+    def _find_connected_traversables(self, current_pos, level_string_lines, visited, directions):
+        for direction in directions:
             new_pos = (current_pos[0] + direction[0], current_pos[1] + direction[1])
             if new_pos in visited:
                 continue
             if level_string_lines[new_pos[1]][new_pos[0]] == self.bounding_obj_char:
                 continue
             visited.add(new_pos)
-            self._find_connected_traversables(new_pos, level_string_lines, visited)
+            self._find_connected_traversables(new_pos, level_string_lines, visited, directions)
