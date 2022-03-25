@@ -3,6 +3,7 @@ from dotenv import dotenv_values
 import os
 from griddly import GymWrapper, gd
 import time
+import env_util
 
 
 def get_db():
@@ -59,10 +60,13 @@ def print_score(game_run_data):
 
 def replay_game(env, actions):
     env.render(observer='global')
+    agent_idx = 0
     for action in actions:
         env.step(action)
-        time.sleep(1)
+        print(env_util.action_to_str(env, action[agent_idx]))
         env.render(observer='global')
+        time.sleep(4)
+        agent_idx = (agent_idx + 1) % 2
 
 
 if __name__=='__main__':
