@@ -17,12 +17,16 @@ class CollectorActionSpaceBuilder:
         'ranged_attack': 1
     }
 
-    blocked_combos = {
+    blocked_pairs = {
         'lateral_move': ['lateral_collect_move'],
         'diagonal_move': ['diagonal_collect_move'],
         'lateral_collect_move': ['collect'],
         'diagonal_collect_move': ['collect'],
         'melee_attack': ['ranged_attack'],
+    }
+
+    depends_on_either = {
+        'rotate': ['melee_attack', 'ranged_attack', 'collect_from_ahead']
     }
 
     max_number_of_actions = 8
@@ -44,7 +48,8 @@ class CollectorActionSpaceBuilder:
             valid_action_set = (contains_collect_actions(action_set_candidate) and 
                                 contains_move_actions(action_set_candidate) and 
                                 self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and
-                                not self.has_blocked_combos(action_set_candidate))
+                                not self.has_blocked_combos(action_set_candidate) and
+                                self.satisfies_dependencies(action_set_candidate))
         return action_set_candidate
 
 
@@ -64,7 +69,8 @@ class CollectorActionSpaceBuilder:
             action_set_candidate = self.build_random_action_set()
             valid_action_set = ((contains_turn_and_attack(action_set_candidate) or contains_move_actions(action_set_candidate)) and 
                                 self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and 
-                                not self.has_blocked_combos(action_set_candidate))
+                                not self.has_blocked_combos(action_set_candidate) and
+                                self.satisfies_dependencies(action_set_candidate))
         return action_set_candidate
 
 
@@ -85,8 +91,20 @@ class CollectorActionSpaceBuilder:
 
     def has_blocked_combos(self, action_list):
         for action in action_list:
-            if action in self.blocked_combos:
-                for blocked_action in self.blocked_combos[action]:
+            if action in self.blocked_pairs:
+                for blocked_action in self.blocked_pairs[action]:
                     if blocked_action in action_list:
                         return True
         return False
+
+    def satisfies_dependencies(self, action_list):
+        for action in action_list:
+            if action in self.depends_on_either:
+                satisfied = False
+                for dependency in self.depends_on_either[action]:
+                    if dependency in action_list:
+                        satisfied = True
+                        break
+                if not satisfied:
+                    return False
+        return True
