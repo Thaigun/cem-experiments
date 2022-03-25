@@ -47,6 +47,11 @@ class GameRulesObject:
             'GameRuns': self.game_runs
         }
 
+    def __hash__(self) -> int:
+        plr_action_space_hash = hash(tuple(self.player_action_space))
+        npc_action_space_hash = hash(tuple(self.npc_action_space))
+        return hash(plr_action_space_hash ^ npc_action_space_hash)
+
 
 class CEMParamObject:
     def __init__(self, actors, perceptors, weights, anticipation_trust=False, trust_steps=[]):

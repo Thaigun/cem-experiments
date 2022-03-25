@@ -24,10 +24,14 @@ class DatabaseInterface:
         self.firebase_app = firebase_admin.initialize_app(cred, options, name)
 
 
-    def save_new_entry(self, path, data_entry):
+    def add_new_entry(self, path, data_entry):
         return self.database.child(path).push(data_entry)
-
     
     def get_child_ref(self, path):
         return self.database.child(path)
-        
+    
+    def child_exists(self, path):
+        return self.database.child(path).get() is not None
+
+    def save_data_in_path(self, path, data):
+        self.database.child(path).set(data)

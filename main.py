@@ -3,10 +3,18 @@ from multiprocessing import Process
 import time
 import psutil
 import test_group
+import random
+from dotenv import dotenv_values
 
 
 PARALLEL = True
 test_processes = []
+
+
+def try_seed_random():
+    config = dotenv_values('.env')
+    if 'SEED' in config:
+        random.seed(config['SEED'])
 
 
 def is_cpu_available():
@@ -51,6 +59,7 @@ def clean_finished_processes():
 
 
 if __name__ == '__main__':
+    try_seed_random()
     if not PARALLEL:
         for game_ingredients in test_group.build_game_instances():
             test_group.play_and_save(*game_ingredients)

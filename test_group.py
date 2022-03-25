@@ -92,21 +92,34 @@ def build_game_instances():
     db = DatabaseInterface('cem-experiments')
     cem_parameters = get_cem_parameters(db)
     map_parameters = get_map_parameters(db)
+    
+    maps_per_param_key = {}
+    for map_param_key in map_param_keys:
+            map_param = map_parameters.get(map_param_key)
+            maps_per_param_key[map_param_key] = generate_maps(map_param)
 
     while True:
         player_action_space, npc_action_space = build_action_spaces()
-        game_rules_ref = save_game_rules_obj(db, player_action_space, npc_action_space)
+        game_rules_ref = try_save_game_rules(db, player_action_space, npc_action_space)
+        if game_rules_ref is None:
+            continue
         cem_param_keys = list(cem_parameters)
         map_param_keys = list(map_parameters)
-        random.shuffle(cem_param_keys)
-        random.shuffle(map_param_keys)
         for map_param_key in map_param_keys:
-            map_param = map_parameters.get(map_param_key)
-            for _ in range(RUNS_PER_CONFIG):
-                map = generate_map(map_param)
+            for map in maps_per_param_key[map_param_key]:
                 for cem_param_key in cem_param_keys:
                     cem_param_obj = { cem_param_key: cem_parameters.get(cem_param_key) }
                     yield map, player_action_space, npc_action_space, map_param_key, cem_param_obj, game_rules_ref.key
+
+
+def try_save_game_rules(db, player_action_space, npc_action_space):
+    rules_obj = database_object.GameRulesObject(player_action_space, npc_action_space)
+    rules_hash = hash(rules_obj)
+    if db.child_exists('reserved_rule_hashes/' + str(rules_hash)):
+        return None
+    db.save_data_in_path('reserved_rule_hashes/' + str(rules_hash), rules_hash)
+    game_rules_ref = db.save_new_entry('game_rules', rules_obj.get_data_dict())
+    return game_rules_ref
 
 
 def build_action_spaces():
@@ -159,13 +172,7 @@ def build_game_conf(player_action_space, npc_action_space, cem_param):
     return game_conf
 
 
-def save_game_rules_obj(db_ref, player_action_space, npc_action_space):
-    rules_obj = database_object.GameRulesObject(player_action_space, npc_action_space)
-    new_item_ref = db_ref.save_new_entry('game_rules', rules_obj.get_data_dict())
-    return new_item_ref
-
-
-def generate_map(map_param):
+def generate_maps(map_param):
     map_generator_config = {
         'width': map_param['Width'],
         'height': map_param['Height'],
@@ -174,7 +181,11 @@ def generate_map(map_param):
         'obj_char_to_amount': map_param['ObjectCounts']
     }
     level_generator = SimpleLevelGenerator(map_generator_config)
-    return level_generator.generate()
+    levels = []
+    for _ in range(RUNS_PER_CONFIG):
+        map = level_generator.generate()
+        levels.append(map)
+    return levels
 
 
 def make_game_run_obj(game_rules_key, cem_params_key, map_params_key, map, game, griddly_description):

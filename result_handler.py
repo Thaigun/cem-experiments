@@ -4,9 +4,7 @@ import os
 import copy
 import numpy as np
 from enum import Enum
-from ptitprince import PtitPrince as pt
-from itertools import product, groupby
-from collections import OrderedDict
+from itertools import product
 
 
 TEST_GROUP_SIZE = 30*4*3
