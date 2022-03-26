@@ -16,7 +16,7 @@ class CollectActionType(Enum):
 
 
 def get_result_object():
-    result_file_name = 'prod5.json' #input('Enter the name of the result file: ')
+    result_file_name = input('Enter the name of the result file: ')
     with open(os.path.join('results', result_file_name), 'r') as result_file:
         result_object = json.load(result_file)
         return result_object
@@ -31,7 +31,7 @@ def select_complete_test_groups(result_obj):
     }
 
     all_game_rules = result_obj['game_rules']
-    complete_game_rule_keys = [game_rule_key for game_rule_key, game_rule_obj in all_game_rules.items() if len(game_rule_obj['game_runs']) == TEST_GROUP_SIZE]
+    complete_game_rule_keys = [game_rule_key for game_rule_key, game_rule_obj in all_game_rules.items() if 'game_runs' in game_rule_obj and len(game_rule_obj['game_runs']) == TEST_GROUP_SIZE]
     for game_rule_key in complete_game_rule_keys:
         filtered_result['game_rules'][game_rule_key] = copy.deepcopy(all_game_rules[game_rule_key])
 
