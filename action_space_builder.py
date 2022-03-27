@@ -26,51 +26,25 @@ class CollectorActionSpaceBuilder:
     }
 
     depends_on_either = {
-        'rotate': ['melee_attack', 'ranged_attack', 'collect_from_ahead']
+        'rotate': ['melee_attack', 'ranged_attack', 'collect_from_ahead'],
+        'collect_from_ahead': ['rotate', 'lateral_move']
     }
 
     max_number_of_actions = 6
 
     def build_player_action_space(self):
-        def contains_collect_actions(action_set):
-            collect_actions = {'lateral_collect_move', 'diagonal_collect_move', 'collect', 'collect_from_ahead'}
-            found_collect_actions = action_set.intersection(collect_actions) 
-            return len(found_collect_actions) > 0
-
-        def contains_move_actions(action_set):
-            move_actions = {'lateral_move', 'diagonal_move', 'lateral_collect_move', 'diagonal_collect_move'}
-            found_move_actions = action_set.intersection(move_actions)
-            return len(found_move_actions) > 0
-
         valid_action_set = False
         while not valid_action_set:
             action_set_candidate = self.build_random_action_set()
-            valid_action_set = (contains_collect_actions(action_set_candidate) and 
-                                contains_move_actions(action_set_candidate) and 
-                                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and
-                                not self.has_blocked_combos(action_set_candidate) and
-                                self.satisfies_dependencies(action_set_candidate))
+            valid_action_set = self.player_set_validation(action_set_candidate)
         return action_set_candidate
 
 
     def build_npc_action_space(self):
-        def contains_turn_and_attack(action_set):
-            attack_actions = {'melee_attack', 'ranged_attack'}
-            found_collect_actions = action_set.intersection(attack_actions) 
-            return len(found_collect_actions) > 0 and 'rotate' in action_set
-
-        def contains_move_actions(action_set):
-            move_actions = {'lateral_move', 'diagonal_move', 'lateral_collect_move', 'diagonal_collect_move', 'lateral_push_move', 'diagonal_push_move'}
-            found_move_actions = action_set.intersection(move_actions)
-            return len(found_move_actions) > 0
-
         valid_action_set = False
         while not valid_action_set:
             action_set_candidate = self.build_random_action_set()
-            valid_action_set = ((contains_turn_and_attack(action_set_candidate) or contains_move_actions(action_set_candidate)) and 
-                                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and 
-                                not self.has_blocked_combos(action_set_candidate) and
-                                self.satisfies_dependencies(action_set_candidate))
+            valid_action_set = self.npc_set_validation(action_set_candidate)
         return action_set_candidate
 
 
@@ -83,6 +57,41 @@ class CollectorActionSpaceBuilder:
             if random_float < uniform_probability * probability_coefficient:
                 action_space.add(action_name)
         return action_space
+
+
+    def player_set_validation(self, action_set_candidate):
+        def contains_collect_actions(action_set):
+            collect_actions = {'lateral_collect_move', 'diagonal_collect_move', 'collect', 'collect_from_ahead'}
+            found_collect_actions = action_set.intersection(collect_actions) 
+            return len(found_collect_actions) > 0
+
+        def contains_move_actions(action_set):
+            move_actions = {'lateral_move', 'diagonal_move', 'lateral_collect_move', 'diagonal_collect_move'}
+            found_move_actions = action_set.intersection(move_actions)
+            return len(found_move_actions) > 0
+
+        return (contains_collect_actions(action_set_candidate) and 
+                contains_move_actions(action_set_candidate) and 
+                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and
+                not self.has_blocked_combos(action_set_candidate) and
+                self.satisfies_dependencies(action_set_candidate))
+
+
+    def npc_set_validation(self, action_set_candidate):
+        def contains_turn_and_attack(action_set):
+            attack_actions = {'melee_attack', 'ranged_attack'}
+            found_collect_actions = action_set.intersection(attack_actions) 
+            return len(found_collect_actions) > 0 and 'rotate' in action_set
+
+        def contains_move_actions(action_set):
+            move_actions = {'lateral_move', 'diagonal_move', 'lateral_collect_move', 'diagonal_collect_move', 'lateral_push_move', 'diagonal_push_move'}
+            found_move_actions = action_set.intersection(move_actions)
+            return len(found_move_actions) > 0
+
+        return ((contains_turn_and_attack(action_set_candidate) or contains_move_actions(action_set_candidate)) and 
+                self.total_number_of_actions(action_set_candidate) <= self.max_number_of_actions and 
+                not self.has_blocked_combos(action_set_candidate) and
+                self.satisfies_dependencies(action_set_candidate))
 
 
     def total_number_of_actions(self, action_list):
