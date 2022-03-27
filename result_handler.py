@@ -71,27 +71,7 @@ def build_top_level_obj(full_data, run_keys, current_data_obj, top_level_name):
                 del filtered_param_obj['game_runs'][dict_key]
         if len(filtered_param_obj['game_runs']) > 0:
             current_data_obj[top_level_name][param_obj_key] = filtered_param_obj
-
-
-def boxplot_cem_comparison(result_obj):
-    cem_scores = []
-    for cem_param_obj in result_obj['cem_params'].values():
-        print(cem_param_obj['EmpowermentPairs'])
-        this_cem_scores = []
-        for game_run_key in cem_param_obj['game_runs'].values():
-            this_cem_scores.append(result_obj['game_runs'][game_run_key]['Score'][0])
-        np_scores = np.array(this_cem_scores)
-        print('Average: ', np.mean(np_scores))
-        cem_scores.append(np_scores)
-    box_plot_data(cem_scores, 'CEM-parametrization comparison')
-
-
-def box_plot_data(data, name):
-    fig1, ax1 = plt.subplots()
-    ax1.set_title(name)
-    ax1.boxplot(data)
-    plt.show()
-
+            
 
 def select_with_collect_type(full_data, type):
     selected_runs = []
@@ -123,8 +103,8 @@ def select_with_run_score(full_data, min_score, max_score):
 def plot_all_figures(data_set):
     figure, axs = plt.subplots(3, 3)
     plot_diff_histograms(axs[0], data_set)
-    #plot_avg_diff_raincloud(data)
-    #plot_proportion_bars(data)
+    #plot_avg_diff_raincloud(axs[1], data_set)
+    #plot_proportion_bars(axs[2], data_set)
     plt.show()
 
 def plot_diff_histograms(ax, data_set):
@@ -141,7 +121,8 @@ def plot_diff_histograms(ax, data_set):
         ax[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         ax[sub_plot_idx].set_ylabel('Number of runs')
         sub_plot_idx += 1
-
+        
+        
 def extract_score_diffs_per_pair(data):
     test_batches = extract_test_patches(data)
 
