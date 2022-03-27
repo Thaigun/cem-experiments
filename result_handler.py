@@ -15,6 +15,12 @@ class CollectActionType(Enum):
     EMBEDDED = 1
 
 
+class SubDataSet:
+    def __init__(self, name, data):
+        self.name = name
+        self.data = data
+
+
 def get_result_object():
     result_file_name = input('Enter the name of the result file: ')
     with open(os.path.join('results', result_file_name), 'r') as result_file:
@@ -23,36 +29,45 @@ def get_result_object():
 
 
 def select_complete_test_groups(result_obj):
+    all_game_rules = result_obj['game_rules']
+    complete_game_rules = [game_rule_obj for game_rule_obj in all_game_rules.values() if 'game_runs' in game_rule_obj and len(game_rule_obj['game_runs']) == TEST_GROUP_SIZE]
+    complete_test_run_keys = []
+    for game_rule in complete_game_rules:
+        complete_test_run_keys += game_rule['game_runs'].values()
+    return build_data_for_selected_runs(result_obj, complete_test_run_keys)
+
+
+def build_data_for_selected_runs(full_data, run_keys):
     filtered_result = {
         'cem_params': {},
         'map_params': {},
         'game_rules': {},
         'game_runs': {}
     }
+    
+    for game_run_key in run_keys:
+        filtered_result['game_runs'][game_run_key] = full_data['game_runs'][game_run_key] #copy.deepcopy(result_obj['game_runs'][game_run_key])
 
-    all_game_rules = result_obj['game_rules']
-    complete_game_rule_keys = [game_rule_key for game_rule_key, game_rule_obj in all_game_rules.items() if 'game_runs' in game_rule_obj and len(game_rule_obj['game_runs']) == TEST_GROUP_SIZE]
-    for game_rule_key in complete_game_rule_keys:
-        filtered_result['game_rules'][game_rule_key] = copy.deepcopy(all_game_rules[game_rule_key])
+    for game_rule_key, game_rule_obj in full_data['game_rules'].items():
+        filtered_rule_param = copy.deepcopy(game_rule_obj)
+        for dict_key, game_rule_key in game_rule_obj['game_runs'].items():
+            if game_run_key not in run_keys:
+                del filtered_rule_param['game_runs'][dict_key]
+        filtered_result['game_rules'][game_rule_key] = filtered_rule_param
 
-    game_runs_in_complete_groups = [game_run_key for game_run_key, game_run_obj in result_obj['game_runs'].items() if game_run_obj['GameRules'] in complete_game_rule_keys]
-    for game_run_key in game_runs_in_complete_groups:
-        filtered_result['game_runs'][game_run_key] = result_obj['game_runs'][game_run_key] #copy.deepcopy(result_obj['game_runs'][game_run_key])
-
-    for cem_param_key, cem_param_obj in result_obj['cem_params'].items():
+    for cem_param_key, cem_param_obj in full_data['cem_params'].items():
         filtered_cem_param = copy.deepcopy(cem_param_obj)
         for dict_key, game_run_key in cem_param_obj['game_runs'].items():
-            if game_run_key not in game_runs_in_complete_groups:
+            if game_run_key not in run_keys:
                 del filtered_cem_param['game_runs'][dict_key]
         filtered_result['cem_params'][cem_param_key] = filtered_cem_param
 
-    for map_param_key, map_param_obj in result_obj['map_params'].items():
+    for map_param_key, map_param_obj in full_data['map_params'].items():
         filtered_map_param = copy.deepcopy(map_param_obj)
         for dict_key, game_run_key in map_param_obj['game_runs'].items():
-            if game_run_key not in game_runs_in_complete_groups:
+            if game_run_key not in run_keys:
                 del filtered_map_param['game_runs'][dict_key]
         filtered_result['map_params'][map_param_key] = filtered_map_param
-
     return filtered_result
 
 
@@ -103,12 +118,20 @@ def select_with_run_score(full_data, min_score, max_score):
     return selected_runs
 
 
-def plot_cem_diff_raincloud(full_data, available_runs, emp_param_names):
-    cem_keys = list(full_data['cem_params'].keys())
+def plot_all_figures(data_set):
+    figure, axis = plt.subplots(3, 3)
+    plot_diff_histogram(data_set, axis[0])
+    #plot_avg_diff_raincloud(data)
+    #plot_proportion_bars(data)
+    plt.show()
+
+def plot_diff_histogram(data_set, subplot):
+    data = data_set.data
+    cem_keys = list(data['cem_params'].keys())
 
     all_runs = {}
-    for run_key in available_runs:
-        game_run = full_data['game_runs'][run_key]
+    for run_key in data['game_runs']:
+        game_run = data['game_runs'][run_key]
         comparison_key = (game_run['GriddlyDescription'], game_run['GameRules'], game_run['Map'])
         if comparison_key not in all_runs:
             all_runs[comparison_key] = []
@@ -129,12 +152,14 @@ def plot_cem_diff_raincloud(full_data, available_runs, emp_param_names):
                 if run2['CemParams'] == cem_pair[0]:
                     diff = -diff
                 diff_per_pair[cem_pair].append(diff)
-    
+
+    emp_param_names = get_emp_param_names(data)
+    sub_plot_idx = 0
     for pair, diffs in diff_per_pair.items():
         print(emp_param_names[pair[1]], '-', emp_param_names[pair[0]])
         print(np.mean(diffs))
-        plt.hist(diffs, bins=16, range=(-8, 8))
-        plt.show()
+        subplot[sub_plot_idx].hist(diffs, bins=16, range=(-8.5, 7.5))
+        sub_plot_idx += 1
 
 
 def get_emp_param_names(full_data):
@@ -160,16 +185,25 @@ def get_emp_param_names(full_data):
 if __name__ == '__main__':
     result_obj = get_result_object()
     complete_test_group_data = select_complete_test_groups(result_obj)
+
+    test_data_sets = []
+
     all_test_runs = list(complete_test_group_data['game_runs'])
     separate_collect_runs = select_with_collect_type(complete_test_group_data, CollectActionType.SEPARATE)
     embedded_collect_runs = select_with_collect_type(complete_test_group_data, CollectActionType.EMBEDDED)
     small_map_runs = select_with_map_size(complete_test_group_data, 8, 8)
     big_map_runs = select_with_map_size(complete_test_group_data, 14, 14)
     small_and_separate_runs = set(separate_collect_runs).intersection(set(small_map_runs))
-    emp_param_names = get_emp_param_names(complete_test_group_data)
-    for runs in [small_and_separate_runs, all_test_runs, separate_collect_runs, embedded_collect_runs, small_map_runs, big_map_runs]:
-        plot_cem_diff_raincloud(complete_test_group_data, runs, emp_param_names)
+
+    test_data_sets.append(SubDataSet('All test runs', complete_test_group_data))
+    test_data_sets.append(SubDataSet('Player with separate collect action', build_data_for_selected_runs(complete_test_group_data, separate_collect_runs)))
+    test_data_sets.append(SubDataSet('Player\'s collect action embedded to movement', build_data_for_selected_runs(complete_test_group_data, separate_collect_runs)))
+    test_data_sets.append(SubDataSet('Small maps', build_data_for_selected_runs(complete_test_group_data, small_map_runs)))
+    test_data_sets.append(SubDataSet('Big maps', build_data_for_selected_runs(complete_test_group_data, big_map_runs)))
+    test_data_sets.append(SubDataSet('Small maps and separate collect action', build_data_for_selected_runs(complete_test_group_data, small_and_separate_runs)))
+
+    for sub_data in test_data_sets:
+        plot_all_figures(sub_data)
     zero_score_games = select_with_run_score(complete_test_group_data, 0, 0)
     print('Number of zero-score games: ', len(zero_score_games))
     print(zero_score_games)
-    plt.show()
