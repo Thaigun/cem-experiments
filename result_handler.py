@@ -7,6 +7,7 @@ from enum import Enum
 from itertools import product
 import play_back_tool
 import action_space_builder
+from ptitprince import PtitPrince as pt
 
 
 TEST_GROUP_SIZE = 30*4*3
@@ -103,31 +104,29 @@ def select_with_run_score(full_data, min_score, max_score):
 def plot_all_figures(data_set):
     figure, axs = plt.subplots(3, 3)
     plot_diff_histograms(axs[0], data_set)
-    #plot_avg_diff_raincloud(axs[1], data_set)
+    plot_avg_diff_rainclouds(axs[1], data_set)
     #plot_proportion_bars(axs[2], data_set)
     plt.show()
 
 def plot_diff_histograms(ax, data_set):
     data = data_set.data
-    score_diffs_per_pair = extract_score_diffs_per_pair(data)
+    test_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'Map'])
+    score_diffs_per_pair = extract_score_diffs_per_pair(data, test_batches)
 
-    emp_param_names = get_emp_param_names(data)
+    emp_param_names = get_cem_param_names(data)
     sub_plot_idx = 0
     for pair, diffs in score_diffs_per_pair.items():
         print(emp_param_names[pair[1]], '-', emp_param_names[pair[0]])
         print(np.mean(diffs))
         ax[sub_plot_idx].hist(diffs, bins=16, range=(-8.5, 7.5), linewidth=0.5, edgecolor='white')
-        ax[sub_plot_idx].set_title(data_set.name + ',\n' + emp_param_names[pair[1]] + ' - ' + emp_param_names[pair[0]])
+        ax[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + ' - ' + emp_param_names[pair[0]])
         ax[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         ax[sub_plot_idx].set_ylabel('Number of runs')
         sub_plot_idx += 1
-        
-        
-def extract_score_diffs_per_pair(data):
-    test_batches = extract_test_patches(data)
 
-    cem_keys = list(data['cem_params'].keys())
-    cem_pairs = {tuple(sorted(pair)) for pair in product(cem_keys, repeat=2) if pair[0] != pair[1]}
+        
+def extract_score_diffs_per_pair(full_data, test_batches):
+    cem_pairs = get_cem_param_pairs(full_data)
     score_diffs_per_pair = {pair: [] for pair in cem_pairs}
     for test_batch in test_batches.values():
         for run1_idx in range(len(test_batch)):
@@ -144,18 +143,47 @@ def extract_score_diffs_per_pair(data):
                 score_diffs_per_pair[cem_pair].append(diff)
     return score_diffs_per_pair
 
-def extract_test_patches(data):
-    test_batches = {}
-    for run_key in data['game_runs']:
-        game_run = data['game_runs'][run_key]
-        test_batch_key = (game_run['GriddlyDescription'], game_run['GameRules'], game_run['Map'])
-        if test_batch_key not in test_batches:
-            test_batches[test_batch_key] = []
-        test_batches[test_batch_key].append(game_run)
-    return test_batches
+
+def plot_avg_diff_rainclouds(ax, data_set):
+    data = data_set.data
+    cem_param_pairs = get_cem_param_pairs(data)
+    avg_list_per_cem_pair = {pair: [] for pair in cem_param_pairs}
+    game_variant_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'MapParams'])
+    for game_variant_batch in game_variant_batches.values():
+        variant_scores_per_cem = {cem_param: [] for cem_param in data['cem_params'].keys()}
+        for game_run in game_variant_batch:
+            variant_scores_per_cem[game_run['CemParams']].append(game_run['Score'][0])
+        avg_score_per_cem = {cem_param: np.mean(scores) for cem_param, scores in variant_scores_per_cem.items()}
+        for pair in cem_param_pairs:
+            avg_list_per_cem_pair[pair].append(avg_score_per_cem[pair[1]] - avg_score_per_cem[pair[0]])
+    sub_plot_idx = 0
+    for pair, avgs in avg_list_per_cem_pair.items():
+        ax[sub_plot_idx] = pt.RainCloud(y=avgs, ax=ax[sub_plot_idx], orient='h')
+        ax[sub_plot_idx].set_title(data_set.name + ', ' + get_cem_param_names(data)[pair[1]] + ' - ' + get_cem_param_names(data)[pair[0]])
+        ax[sub_plot_idx].set_xlabel('Average score difference between CEM-parametrizations')
+        ax[sub_plot_idx].set_ylabel('Frequency')
+        sub_plot_idx += 1
 
 
-def get_emp_param_names(full_data):
+def get_cem_param_pairs(full_data):
+    cem_keys = list(full_data['cem_params'].keys())
+    cem_pairs = {tuple(sorted(pair)) for pair in product(cem_keys, repeat=2) if pair[0] != pair[1]}
+    return cem_pairs
+
+
+def group_runs_by_params(data, param_names):
+    sorted_params = sorted(param_names)
+    param_groups = {}
+    for run in data['game_runs'].values():
+        param_values = [run[param_name] for param_name in sorted_params]
+        param_group_key = tuple(param_values)
+        if param_group_key not in param_groups:
+            param_groups[param_group_key] = []
+        param_groups[param_group_key].append(run)
+    return param_groups
+
+
+def get_cem_param_names(full_data):
     names = {}
     for cem_param_key, cem_param in full_data['cem_params'].items():
         if cem_param['Trust']['Anticipation']:
