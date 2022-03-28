@@ -66,13 +66,17 @@ if __name__ == '__main__':
     else:
         game_generator = test_group.build_game_instances()
         sleep_time = 30
-        while True:
+        tests_done = False
+        while not tests_done or len(test_processes) > 0:
             clean_finished_processes()
             # If there are resources, reduce the sleep time a bit, and vice versa.
-            if resources_available():
+            if not tests_done and resources_available():
                 sleep_time *= 0.93
-                game_ingredients = next(game_generator)
-                spawn_test_run(game_ingredients)
+                try:
+                    game_ingredients = next(game_generator)
+                    spawn_test_run(game_ingredients)
+                except StopIteration:
+                    tests_done = True
             else:
                 sleep_time /= 0.93
             sleep_time = max(5, min(sleep_time, 90))

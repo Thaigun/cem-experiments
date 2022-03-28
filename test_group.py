@@ -100,12 +100,15 @@ def build_game_instances():
         map_param = map_parameters.get(map_param_key)
         maps_per_param_key[map_param_key] = generate_maps(map_param)
 
-    while True:
+    skips_in_row = 0
+    while skips_in_row < 100:
         player_action_space, npc_action_space = build_action_spaces()
         game_rules_ref = try_save_game_rules(db, player_action_space, npc_action_space)
         if game_rules_ref is None:
             print('SKIPPING game rules', player_action_space, npc_action_space)
+            skips_in_row += 1
             continue
+        skips_in_row = 0
         for map_param_key in map_param_keys:
             for map in maps_per_param_key[map_param_key]:
                 for cem_param_key in cem_param_keys:

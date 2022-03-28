@@ -12,8 +12,7 @@ def get_db():
     return DatabaseInterface('cem-experiments', root_path=root_path)
 
 
-def get_game_run_data():
-    run_id = input('Please enter the run id: ')
+def get_game_run_data(run_id):
     db = get_db()
     game_run_ref = db.get_child_ref('game_runs/' + run_id)
     game_run_data = game_run_ref.get()
@@ -58,21 +57,26 @@ def print_score(game_run_data):
     print('Score: ', game_run_data['Score'])
 
 
-def replay_game(env, actions):
+def replay_game(env, actions, delay):
     env.render(observer='global')
     agent_idx = 0
     for action in actions:
         env.step(action)
         print(env_util.action_to_str(env, action[agent_idx]))
         env.render(observer='global')
-        time.sleep(4)
+        time.sleep(delay)
         agent_idx = (agent_idx + 1) % 2
 
 
-if __name__=='__main__':
-    game_run_data = get_game_run_data()
+def run_replay_for_id(run_id, delay=2):
+    game_run_data = get_game_run_data(run_id)
     env = create_rerun_env(game_run_data['GriddlyDescription'])
     env.reset(level_string=game_run_data['Map'])
     print_env_information(game_run_data)
-    replay_game(env, game_run_data['Actions'])
+    replay_game(env, game_run_data['Actions'], delay=delay)
+
+
+if __name__=='__main__':
+    run_id = input('Please enter the run id: ')
+    run_replay_for_id(run_id)
     input('Press enter to exit')
