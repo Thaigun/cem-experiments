@@ -17,6 +17,21 @@ class CollectorActionSpaceBuilder:
         'ranged_attack': 1
     }
 
+    occurence_probabilities = {
+        'idle': 1.0/12,
+        'lateral_move': 1.0/12,
+        'diagonal_move': 1.0/12,
+        'lateral_collect_move': 1.0/12,
+        'diagonal_collect_move': 1.0/12,
+        'lateral_push_move': 1.0/12,
+        'diagonal_push_move': 1.0/12,
+        'collect': 0.3,
+        'collect_from_ahead': 0.3,
+        'rotate': 1.0/12,
+        'melee_attack': 1.0/12,
+        'ranged_attack': 1.0/12
+    }
+
     blocked_pairs = {
         'lateral_move': ['lateral_collect_move'],
         'diagonal_move': ['diagonal_collect_move'],
@@ -48,13 +63,12 @@ class CollectorActionSpaceBuilder:
         return action_set_candidate
 
 
-    def build_random_action_set(self, probability_coefficient=1.0):
+    def build_random_action_set(self):
         action_space = set()
         available_actions = self.available_action_amounts.keys()
-        uniform_probability = 1.0 / len(available_actions)
         for action_name in available_actions:
             random_float = random.random()
-            if random_float < uniform_probability * probability_coefficient:
+            if random_float < self.occurence_probabilities[action_name]:
                 action_space.add(action_name)
         return action_space
 

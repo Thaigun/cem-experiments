@@ -101,7 +101,7 @@ def build_game_instances():
         maps_per_param_key[map_param_key] = generate_maps(map_param)
 
     skips_in_row = 0
-    while skips_in_row < 100:
+    while skips_in_row < 400:
         player_action_space, npc_action_space = build_action_spaces()
         game_rules_ref = try_save_game_rules(db, player_action_space, npc_action_space)
         if game_rules_ref is None:
