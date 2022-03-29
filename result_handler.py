@@ -218,8 +218,14 @@ def create_data_sets(full_data):
     data_sets.append(SubDataSet('Small maps', build_data_for_selected_runs(full_data, small_map_runs)))
     data_sets.append(SubDataSet('Big maps', build_data_for_selected_runs(full_data, big_map_runs)))
     data_sets.append(SubDataSet('Small maps and separate collect action', build_data_for_selected_runs(full_data, small_and_separate_runs)))
-
     return data_sets
+
+
+def count_unique_maps(full_data):
+    found_maps = set()
+    for run in full_data['game_runs'].values():
+        found_maps.add(run['Map'])
+    return len(found_maps)
         
 
 if __name__ == '__main__':
