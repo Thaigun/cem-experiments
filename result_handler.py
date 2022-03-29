@@ -248,15 +248,16 @@ def do_zero_score_search(full_data):
 
 
 def do_save_video_replays(full_data):
-    cem_x_rule_groups = group_runs_by_params(full_data, ['CemParams', 'GameRules'])
+    game_run_groups = group_runs_by_params(full_data, ['GameRules', 'Map'])
+    random_group_keys = random.sample(list(game_run_groups), 10)
     cem_param_names = get_cem_param_names(full_data)
     sub_dir = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    for cem_rules_key, game_run_group in cem_x_rule_groups.items():
-        game_run = random.choice(game_run_group)
-        game_rules = full_data['game_rules'][cem_rules_key[1]]
-        cem_param_name = cem_param_names[cem_rules_key[0]]
-        video_name = cem_param_name + '__' + '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions'])
-        video_exporter.make_video_from_data(game_run, sub_dir, video_name, 40)
+    for group_key in random_group_keys:
+        game_rules = full_data['game_rules'][group_key[0]]
+        for game_run in game_run_groups[group_key]:
+            cem_param_name = cem_param_names[game_run['CemParams']]
+            video_name = '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions']) + '__' + cem_param_name
+            video_exporter.make_video_from_data(game_run, sub_dir, video_name, 40)
 
 
 if __name__ == '__main__':
