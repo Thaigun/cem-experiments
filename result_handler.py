@@ -254,10 +254,11 @@ def do_save_video_replays(full_data):
     sub_dir = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     for group_key in random_group_keys:
         game_rules = full_data['game_rules'][group_key[0]]
+        map_hash = str(hash(group_key[1]))[:5]
+        sub_sub_dir = os.path.join(sub_dir, '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions']) + map_hash)
         for game_run in game_run_groups[group_key]:
             cem_param_name = cem_param_names[game_run['CemParams']]
-            video_name = '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions']) + '__' + cem_param_name
-            video_exporter.make_video_from_data(game_run, sub_dir, video_name, 40)
+            video_exporter.make_video_from_data(game_run, sub_sub_dir, cem_param_name, 40)
 
 
 if __name__ == '__main__':
