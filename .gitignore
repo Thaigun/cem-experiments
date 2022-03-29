@@ -134,3 +134,4 @@ dmypy.json
 cert/*.json
 results/*.json
 .env
+video_exports/

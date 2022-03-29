@@ -1,3 +1,4 @@
+import random
 import matplotlib.pyplot as plt
 import json
 import os
@@ -8,6 +9,8 @@ from itertools import product
 import play_back_tool
 import action_space_builder
 from ptitprince import PtitPrince as pt
+import video_exporter
+from datetime import datetime
 
 
 TEST_GROUP_SIZE = 30*4*3
@@ -228,17 +231,46 @@ def count_unique_maps(full_data):
     return len(found_maps)
         
 
-if __name__ == '__main__':
-    result_obj = get_result_object()
-    complete_test_group_data = select_complete_test_groups(result_obj)
-    test_data_sets = create_data_sets(complete_test_group_data)
-
+def do_plotting(full_data):
+    test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
         plot_all_figures(sub_data)
-    zero_score_games = select_with_run_score(complete_test_group_data, 0, 0)
+
+
+def do_zero_score_search(full_data):
+    zero_score_games = select_with_run_score(full_data, 0, 0)
     print('Number of zero-score games: ', len(zero_score_games))
     print(zero_score_games)
     run_zero_scores = input('Do you want to replay zero score games? (y/n)')
     if run_zero_scores == 'y':
         for run_key in zero_score_games:
             play_back_tool.run_replay_for_id(run_key, delay=0.3)
+
+
+def do_save_video_replays(full_data):
+    cem_x_rule_groups = group_runs_by_params(full_data, ['CemParams', 'GameRules'])
+    cem_param_names = get_cem_param_names(full_data)
+    sub_dir = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    for cem_rules_key, game_run_group in cem_x_rule_groups.items():
+        game_run = random.choice(game_run_group)
+        game_rules = full_data['game_rules'][cem_rules_key[1]]
+        cem_param_name = cem_param_names[cem_rules_key[0]]
+        video_name = cem_param_name + '__' + '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions'])
+        video_exporter.make_video_from_data(game_run, sub_dir, video_name, 40)
+
+
+if __name__ == '__main__':
+    result_obj = get_result_object()
+    complete_test_group_data = select_complete_test_groups(result_obj)
+    
+    plotting = input('Plot all figures? (y/n) ')
+    if plotting == 'y':
+        do_plotting(complete_test_group_data)
+
+    find_zeroes = input('Find runs with score 0? (y/n) ')
+    if find_zeroes == 'y':
+        do_zero_score_search(complete_test_group_data)
+
+    video_output = input('Do you want to create a video of runs? (y/n) ')
+    if video_output == 'y':
+        do_save_video_replays(complete_test_group_data)

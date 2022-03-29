@@ -1,10 +1,12 @@
 name: cem-experiments
 channels:
   - defaults
+  - conda-forge
 dependencies:
   - python=3.9
   - matplotlib
   - pyyaml
+  - imageio-ffmpeg
   - pip
   - pip:
     - firebase-admin
