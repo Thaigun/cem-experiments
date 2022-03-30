@@ -410,6 +410,20 @@ Actions:
         Dst:
           Object: [wall, projectile]
       
+  - Name: burp_star
+    InputMapping:
+      Relative: true
+      Inputs:
+        1:
+          VectorToDest: [0, -1]
+          Description: 'ahead'
+    Behaviours:
+      - Src:
+          Object: avatar
+        Dst:
+          Object: _empty
+          Commands:
+            - spawn: star
 
   - Name: choose_icon
     InputMapping:

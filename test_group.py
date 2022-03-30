@@ -1,5 +1,4 @@
 import game_configuration
-from griddly import GymWrapper, gd
 from griddly_cem_agent import CEM
 import policies
 from level_generator import SimpleLevelGenerator
@@ -10,6 +9,7 @@ import action_space_builder
 import random
 from datetime import datetime
 from create_griddly_env import create_griddly_env
+from dotenv import dotenv_values
 
 
 RUNS_PER_CONFIG = 30
@@ -127,7 +127,11 @@ def try_save_game_rules(db, player_action_space, npc_action_space):
 
 
 def build_action_spaces():
-    builder = action_space_builder.CollectorActionSpaceBuilder()
+    config = dotenv_values('.env')
+    if 'USE_FIXED_ACTIONS' in config and config['USE_FIXED_ACTIONS'] == 'true':
+        builder = action_space_builder.FixedActionSpaceBuilder()
+    else:
+        builder = action_space_builder.CollectorActionSpaceBuilder()
     player_action_space = builder.build_player_action_space()
     npc_action_space = builder.build_npc_action_space()
     return list(player_action_space), list(npc_action_space)
