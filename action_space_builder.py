@@ -135,24 +135,24 @@ class CollectorActionSpaceBuilder:
 
 class FixedActionSpaceBuilder:
     player_options = [
-        ['lateral_move', 'collect'],
-        ['diagonal_move', 'collect'],
-        ['lateral_move', 'collect_ahead'],
-        ['lateral_move', 'collect', 'melee_attack'],
-        ['diagonal_move', 'collect', 'melee_attack'],
-        ['lateral_move', 'collect_ahead', 'melee_attack'],
-        ['lateral_move', 'collect', 'ranged_attack'],
-        ['diagonal_move', 'collect', 'ranged_attack'],
-        ['lateral_move', 'collect_ahead', 'ranged_attack']
+        {'lateral_move', 'collect'},
+        {'diagonal_move', 'collect'},
+        {'lateral_move', 'collect_from_ahead'},
+        {'lateral_move', 'collect', 'melee_attack'},
+        {'diagonal_move', 'collect', 'melee_attack'},
+        {'lateral_move', 'collect_from_ahead', 'melee_attack'},
+        {'lateral_move', 'collect', 'ranged_attack'},
+        {'diagonal_move', 'collect', 'ranged_attack'},
+        {'lateral_move', 'collect_from_ahead', 'ranged_attack'}
     ]
 
     npc_options = [
-        ['lateral_push_move'],
-        ['diagonal_push_move'],
-        ['lateral_push_move', 'burp_star'],
-        ['diagonal_push_move', 'burp_star'],
-        ['lateral_move', 'burp_star'],
-        ['diagonal_move', 'burp_star']
+        {'lateral_push_move'},
+        {'diagonal_push_move'},
+        {'lateral_push_move', 'burp_star'},
+        {'diagonal_push_move', 'burp_star'},
+        {'lateral_move', 'burp_star'},
+        {'diagonal_move', 'burp_star'}
     ]
 
     def build_player_action_space(self):
