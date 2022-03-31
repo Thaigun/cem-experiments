@@ -43,6 +43,7 @@ Environment:
 
 # Available action options 
 Actions:
+#0
   - Name: lateral_move
     InputMapping:
       Inputs:
@@ -70,7 +71,7 @@ Actions:
             - rot: _dir
         Dst:
           Object: [_empty, star]
-
+#1
   - Name: diagonal_move
     InputMapping:
       Inputs:
@@ -98,7 +99,7 @@ Actions:
             - rot: _dir
         Dst:
           Object: [_empty, star]
-
+#2
   - Name: lateral_collect_move
     InputMapping:
       Inputs:
@@ -137,7 +138,7 @@ Actions:
           Commands:
             - remove: true
             - decr: star_count
-
+#3
   - Name: diagonal_collect_move
     InputMapping:
       Inputs:
@@ -176,7 +177,7 @@ Actions:
           Commands:
             - remove: true
             - decr: star_count
-
+#4
   - Name: lateral_push_move
     InputMapping:
       Inputs:
@@ -227,7 +228,7 @@ Actions:
           Object: [avatar, star]
           Commands:
             - cascade: _dest
-
+#5
   - Name: diagonal_push_move
     InputMapping:
       Inputs:
@@ -278,7 +279,7 @@ Actions:
           Object: [avatar, star]
           Commands:
             - cascade: _dest
-
+#6
   - Name: collect
     InputMapping:
       Inputs:
@@ -294,7 +295,7 @@ Actions:
             - remove: true
             - reward: 1
             - decr: star_count
-
+#7
   - Name: collect_from_ahead
     InputMapping:
       Relative: true
@@ -311,7 +312,7 @@ Actions:
             - remove: true
             - reward: 1
             - decr: star_count
-
+#8
   - Name: rotate
     InputMapping:
       Inputs:
@@ -334,7 +335,7 @@ Actions:
             - rot: _dir
         Dst:
           Object: avatar
-
+#9
   - Name: melee_attack
     InputMapping:
       Relative: true
@@ -353,7 +354,7 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
-          
+#10
   - Name: ranged_attack
     InputMapping:
       Relative: true
@@ -378,7 +379,7 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
-
+#11
   - Name: ranged_projectile
     InputMapping:
       Internal: true
@@ -409,7 +410,7 @@ Actions:
             - remove: true
         Dst:
           Object: [wall, projectile]
-      
+#12
   - Name: burp_star
     InputMapping:
       Relative: true

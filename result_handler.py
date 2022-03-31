@@ -174,15 +174,18 @@ def get_cem_param_pairs(full_data):
     return cem_pairs
 
 
-def group_runs_by_params(data, param_names):
+def group_runs_by_params(data, param_names, *, return_keys=False):
     sorted_params = sorted(param_names)
     param_groups = {}
-    for run in data['game_runs'].values():
+    for run_key, run in data['game_runs'].items():
         param_values = [run[param_name] for param_name in sorted_params]
         param_group_key = tuple(param_values)
         if param_group_key not in param_groups:
             param_groups[param_group_key] = []
-        param_groups[param_group_key].append(run)
+        if return_keys:
+            param_groups[param_group_key].append(run_key)
+        else:
+            param_groups[param_group_key].append(run)
     return param_groups
 
 
@@ -203,6 +206,15 @@ def get_cem_param_names(full_data):
             names[cem_param_key] = 'Antagonistic'
         else:
             names[cem_param_key] = 'Random'
+    return names
+
+
+def get_map_param_names(full_data):
+    names = {}
+    for map_param_key, map_param in full_data['map_params'].items():
+        size = 'Big' if map_param['Width'] > 12 else 'Small'
+        density = 'Dense' if map_param['ObjectCounts']['w']/(map_param['Width']*map_param['Height']) > 0.2 else 'Sparse'
+        names[map_param_key] = size + ' ' + density
     return names
 
 
@@ -231,10 +243,32 @@ def count_unique_maps(full_data):
     return len(found_maps)
         
 
+def plot_cem_map_matrix():
+    pass
+
+
 def do_plotting(full_data):
     test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
         plot_all_figures(sub_data)
+    
+    cem_map_groups = group_runs_by_params(full_data, ['CemParams', 'MapParams'], return_keys=True)
+    figure, axs = plt.subplots(4, 4)
+    cem_names = get_cem_param_names(full_data)
+    map_names = get_map_param_names(full_data)
+    i = 0
+    for cem_map_key, group_run_keys in cem_map_groups.items():
+        x = int(i / 4)
+        y = i % 4
+        i += 1
+        axs[x, y].set_title(cem_names[cem_map_key[0]] + ', ' + map_names[cem_map_key[1]])
+        group_data = build_data_for_selected_runs(full_data, group_run_keys)
+        runs_per_action_set = group_runs_by_params(group_data, ['GameRules'], return_keys=False)
+        avgs = []
+        for action_set_key, runs in runs_per_action_set.items():
+            avgs.append(np.mean([run['Score'][0] for run in runs]))
+        axs[x, y] = pt.RainCloud(y=avgs, ax=axs[x, y], orient='h')
+    plt.show()
 
 
 def do_zero_score_search(full_data):
