@@ -11,6 +11,7 @@ import action_space_builder
 from ptitprince import PtitPrince as pt
 import video_exporter
 from datetime import datetime
+import pandas as pd
 
 
 TEST_GROUP_SIZE = 30*4*3
@@ -243,34 +244,34 @@ def count_unique_maps(full_data):
     return len(found_maps)
         
 
-def plot_cem_map_matrix():
-    pass
+def prepare_raincloud_data(full_data, from_runs):
+    cem_names = get_cem_param_names(full_data)
+    data = build_data_for_selected_runs(full_data, from_runs)
+    groups_to_average = group_runs_by_params(data, ['CemParams', 'GameRules'])
+    avg_scores_per_group = {group_key: np.mean([run['Score'] for run in group_runs]) for group_key, group_runs in groups_to_average.items()}
+    df_data = []
+    for group_key, avg_score in avg_scores_per_group.items():
+        cem_name = cem_names[group_key[0]]
+        df_data.append((cem_name, avg_score))
+    return pd.DataFrame.from_records(df_data, columns=['cem_param', 'group_avg'])
 
 
 def do_plotting(full_data):
     test_data_sets = create_data_sets(full_data)
-    for sub_data in test_data_sets:
-        plot_all_figures(sub_data)
+    # for sub_data in test_data_sets:
+    #     plot_all_figures(sub_data)
     
-    cem_map_groups = group_runs_by_params(full_data, ['CemParams', 'MapParams'], return_keys=True)
-    sorted_keys = sorted(cem_map_groups.keys())
-    cem_names = get_cem_param_names(full_data)
+    runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
     map_names = get_map_param_names(full_data)
-    figure, axs = plt.subplots(len(cem_names), len(map_names))
+    cem_names = get_cem_param_names(full_data).values()
+    figure, axs = plt.subplots(1, len(map_names))
 
-    key_idx = 0
-    for cem_param, map_param in sorted_keys:
-        cem_param_idx = int(key_idx / len(map_names))
-        map_param_idx = key_idx % len(map_names)
-        axs[cem_param_idx, map_param_idx].set_title(cem_names[cem_param] + ', ' + map_names[map_param])
-        group_run_keys = cem_map_groups[(cem_param, map_param)]
-        group_data = build_data_for_selected_runs(full_data, group_run_keys)
-        runs_per_action_set = group_runs_by_params(group_data, ['GameRules'], return_keys=False)
-        avgs = []
-        for action_set_key, runs in runs_per_action_set.items():
-            avgs.append(np.mean([run['Score'][0] for run in runs]))
-        axs[cem_param_idx, map_param_idx] = pt.RainCloud(y=avgs, ax=axs[cem_param_idx, map_param_idx], orient='h')
-        key_idx += 1
+    map_key_i = 0
+    for map_param_key, runs in runs_per_map.items():
+        data_frame = prepare_raincloud_data(full_data, runs)
+        axs[map_key_i] = pt.RainCloud(x='cem_param', y='group_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_names)
+        axs[map_key_i].set_title(map_names[map_param_key[0]])
+        map_key_i += 1
     plt.show()
 
 
