@@ -29,7 +29,7 @@ class SubDataSet:
 
 
 def get_result_object():
-    result_file_name = input('Enter the name of the result file: ')
+    result_file_name = 'prod8.json'#input('Enter the name of the result file: ')
     with open(os.path.join('results', result_file_name), 'r') as result_file:
         result_object = json.load(result_file)
         return result_object
@@ -105,14 +105,9 @@ def select_with_run_score(full_data, min_score, max_score):
     return selected_runs
 
 
-def plot_all_figures(data_set):
-    figure, axs = plt.subplots(3, 2)
-    plot_diff_histograms(axs, 0, data_set)
-    plot_avg_diff_rainclouds(axs, 1, data_set)
-    #plot_proportion_bars(axs[2], data_set)
-    plt.show()
-
-def plot_diff_histograms(ax, col, data_set):
+def plot_difference_histograms(data_set):
+    figure, axs = plt.subplots(3, 1)
+    figure.set_tight_layout(True)
     data = data_set.data
     test_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'Map'])
     score_diffs_per_pair = extract_score_diffs_per_pair(data, test_batches)
@@ -122,11 +117,12 @@ def plot_diff_histograms(ax, col, data_set):
     for pair, diffs in score_diffs_per_pair.items():
         print(emp_param_names[pair[1]], '-', emp_param_names[pair[0]])
         print(np.mean(diffs))
-        ax[sub_plot_idx, col].hist(diffs, bins=16, range=(-8.5, 7.5), linewidth=0.5, edgecolor='white')
-        ax[sub_plot_idx, col].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + ' - ' + emp_param_names[pair[0]])
-        ax[sub_plot_idx, col].set_xlabel('Score difference between CEM-parametrizations')
-        ax[sub_plot_idx, col].set_ylabel('Number of runs')
+        axs[sub_plot_idx].hist(diffs, bins=16, range=(-8.5, 7.5), linewidth=0.5, edgecolor='white')
+        axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + ' - ' + emp_param_names[pair[0]])
+        axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
+        axs[sub_plot_idx].set_ylabel('Number of runs')
         sub_plot_idx += 1
+    plt.show()
 
         
 def extract_score_diffs_per_pair(full_data, test_batches):
@@ -148,7 +144,44 @@ def extract_score_diffs_per_pair(full_data, test_batches):
     return score_diffs_per_pair
 
 
-def plot_avg_diff_rainclouds(ax, col, data_set):
+def plot_run_score_matrix(full_data):
+    def prepare_raincloud_data(full_data, from_runs):
+        cem_names = get_cem_param_names(full_data)
+        data = build_data_for_selected_runs(full_data, from_runs)
+        groups_to_average = group_runs_by_params(data, ['CemParams', 'GameRules'])
+        avg_scores_per_group = {group_key: np.mean([run['Score'] for run in group_runs]) for group_key, group_runs in groups_to_average.items()}
+        df_data = []
+        for group_key, avg_score in avg_scores_per_group.items():
+            cem_name = cem_names[group_key[0]]
+            df_data.append((cem_name, avg_score))
+        return pd.DataFrame.from_records(df_data, columns=['cem_param', 'action_set_avg'])
+    
+    figure, axs = plt.subplots(1, len(full_data['map_params']))
+    figure.set_tight_layout(True)
+    runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
+    map_names = get_map_param_names(full_data)
+    cem_names = get_cem_param_names(full_data).values()
+    map_key_i = 0
+    for map_param_key, runs in runs_per_map.items():
+        data_frame = prepare_raincloud_data(full_data, runs)
+        axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_names, bw=0.2)
+        axs[map_key_i].set_title(map_names[map_param_key[0]])
+        axs[map_key_i].xaxis.grid(visible=True)
+        axs[map_key_i].yaxis.set_visible(map_key_i == 0)
+        map_key_i += 1
+    plt.show()
+
+
+def plot_avg_diff_rainclouds(data_set):
+    def make_cem_param_name(cem_param_names, pair):
+        short_names = {
+            'Supportive': 'sup',
+            'Antagonistic': 'ant',
+            'Random': 'rnd'
+        }
+        return short_names[cem_param_names[pair[1]]] + '-' + short_names[cem_param_names[pair[0]]]
+
+    figure, axs = plt.subplots()
     data = data_set.data
     cem_param_pairs = get_cem_param_pairs(data)
     avg_list_per_cem_pair = {pair: [] for pair in cem_param_pairs}
@@ -160,13 +193,31 @@ def plot_avg_diff_rainclouds(ax, col, data_set):
         avg_score_per_cem = {cem_param: np.mean(scores) for cem_param, scores in variant_scores_per_cem.items()}
         for pair in cem_param_pairs:
             avg_list_per_cem_pair[pair].append(avg_score_per_cem[pair[1]] - avg_score_per_cem[pair[0]])
-    sub_plot_idx = 0
-    for pair, avgs in avg_list_per_cem_pair.items():
-        ax[sub_plot_idx, col] = pt.RainCloud(y=avgs, ax=ax[sub_plot_idx, col], orient='h')
-        ax[sub_plot_idx, col].set_title(data_set.name + ', ' + get_cem_param_names(data)[pair[1]] + ' - ' + get_cem_param_names(data)[pair[0]])
-        ax[sub_plot_idx, col].set_xlabel('Average score difference between CEM-parametrizations')
-        ax[sub_plot_idx, col].set_ylabel('Frequency')
-        sub_plot_idx += 1
+    
+    cem_param_names = get_cem_param_names(data)
+    pd_ready_data = []
+    for pair, avg_values in avg_list_per_cem_pair.items():
+        cem_pair_name = make_cem_param_name(cem_param_names, pair)
+        pd_ready_data += [(cem_pair_name, avg_diff) for avg_diff in avg_values]
+    data_frame = pd.DataFrame.from_records(pd_ready_data, columns=['cem_pair', 'score_diff_avg'])
+
+    axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-sup', 'rnd-ant'], orient='h', bw=0.2)
+    axs.xaxis.grid(visible=True)
+    axs.set_title('Average score difference between different CEM-parametrizations\n' + data_set.name)
+    plt.show()
+
+
+def find_outliers(data_keys_and_values, outlier_const=1.5):
+    data_arr = np.array([pair[1] for pair in data_keys_and_values])
+    upper_quartile = np.percentile(data_arr, 75)
+    lower_quartile = np.percentile(data_arr, 25)
+    iqr = (upper_quartile - lower_quartile) * outlier_const
+    outlier_bounds = (lower_quartile - iqr, upper_quartile + iqr)
+    outliers = []
+    for data_key, data_val in data_keys_and_values:
+        if data_val < outlier_bounds[0] or data_val > outlier_bounds[1]:
+            outliers.append(data_key)
+    return outliers
 
 
 def get_cem_param_pairs(full_data):
@@ -242,37 +293,14 @@ def count_unique_maps(full_data):
     for run in full_data['game_runs'].values():
         found_maps.add(run['Map'])
     return len(found_maps)
-        
-
-def prepare_raincloud_data(full_data, from_runs):
-    cem_names = get_cem_param_names(full_data)
-    data = build_data_for_selected_runs(full_data, from_runs)
-    groups_to_average = group_runs_by_params(data, ['CemParams', 'GameRules'])
-    avg_scores_per_group = {group_key: np.mean([run['Score'] for run in group_runs]) for group_key, group_runs in groups_to_average.items()}
-    df_data = []
-    for group_key, avg_score in avg_scores_per_group.items():
-        cem_name = cem_names[group_key[0]]
-        df_data.append((cem_name, avg_score))
-    return pd.DataFrame.from_records(df_data, columns=['cem_param', 'group_avg'])
 
 
 def do_plotting(full_data):
     test_data_sets = create_data_sets(full_data)
-    # for sub_data in test_data_sets:
-    #     plot_all_figures(sub_data)
-    
-    runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
-    map_names = get_map_param_names(full_data)
-    cem_names = get_cem_param_names(full_data).values()
-    figure, axs = plt.subplots(1, len(map_names))
-
-    map_key_i = 0
-    for map_param_key, runs in runs_per_map.items():
-        data_frame = prepare_raincloud_data(full_data, runs)
-        axs[map_key_i] = pt.RainCloud(x='cem_param', y='group_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_names)
-        axs[map_key_i].set_title(map_names[map_param_key[0]])
-        map_key_i += 1
-    plt.show()
+    for sub_data in test_data_sets:
+        plot_difference_histograms(sub_data)
+        plot_avg_diff_rainclouds(sub_data)
+    plot_run_score_matrix(full_data)
 
 
 def do_zero_score_search(full_data):
