@@ -181,24 +181,39 @@ def plot_avg_diff_rainclouds(data_set):
         }
         return short_names[cem_param_names[pair[1]]] + '-' + short_names[cem_param_names[pair[0]]]
 
+    def print_outliers(title, lo_outliers, hi_outliers):
+        print('Outliers for pair', title)
+        print('Low outliers:')
+        for lo_outlier in lo_outliers:
+            print('GameRules:', lo_outlier[0][0], 'MapParams:', lo_outlier[0][1], 'Value:', lo_outlier[1])
+        print('High outliers:')
+        for hi_outlier in hi_outliers:
+            print('GameRules:', hi_outlier[0][0], 'MapParams:', hi_outlier[0][1], 'Value:', hi_outlier[1])
+
     figure, axs = plt.subplots()
     data = data_set.data
     cem_param_pairs = get_cem_param_pairs(data)
     avg_list_per_cem_pair = {pair: [] for pair in cem_param_pairs}
-    game_variant_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'MapParams'])
-    for game_variant_batch in game_variant_batches.values():
-        variant_scores_per_cem = {cem_param: [] for cem_param in data['cem_params'].keys()}
+    game_variant_batches = group_runs_by_params(data, ['GameRules', 'GriddlyDescription', 'MapParams'])
+    for game_variant_key, game_variant_batch in game_variant_batches.items():
+        variant_runs_per_cem = {cem_param: [] for cem_param in data['cem_params'].keys()}
         for game_run in game_variant_batch:
-            variant_scores_per_cem[game_run['CemParams']].append(game_run['Score'][0])
-        avg_score_per_cem = {cem_param: np.mean(scores) for cem_param, scores in variant_scores_per_cem.items()}
+            variant_runs_per_cem[game_run['CemParams']].append(game_run)
+        avg_score_per_cem = {}
+        for cem_param, runs in variant_runs_per_cem.items():
+            avg_score = np.mean([run['Score'] for run in runs])
+            avg_score_per_cem[cem_param] = avg_score
         for pair in cem_param_pairs:
-            avg_list_per_cem_pair[pair].append(avg_score_per_cem[pair[1]] - avg_score_per_cem[pair[0]])
-    
+            avg_diff = avg_score_per_cem[pair[1]] - avg_score_per_cem[pair[0]]
+            avg_list_per_cem_pair[pair].append((game_variant_key, avg_diff))
+
     cem_param_names = get_cem_param_names(data)
     pd_ready_data = []
-    for pair, avg_values in avg_list_per_cem_pair.items():
+    for pair, data_points in avg_list_per_cem_pair.items():
         cem_pair_name = make_cem_param_name(cem_param_names, pair)
-        pd_ready_data += [(cem_pair_name, avg_diff) for avg_diff in avg_values]
+        low_outliers, hi_outliers = find_outliers(data_points)
+        print_outliers(cem_pair_name, low_outliers, hi_outliers)
+        pd_ready_data += [(cem_pair_name, data_point[1]) for data_point in data_points]
     data_frame = pd.DataFrame.from_records(pd_ready_data, columns=['cem_pair', 'score_diff_avg'])
 
     axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-sup', 'rnd-ant'], orient='h', bw=0.2)
@@ -213,11 +228,14 @@ def find_outliers(data_keys_and_values, outlier_const=1.5):
     lower_quartile = np.percentile(data_arr, 25)
     iqr = (upper_quartile - lower_quartile) * outlier_const
     outlier_bounds = (lower_quartile - iqr, upper_quartile + iqr)
-    outliers = []
+    low_outliers = []
+    high_outliers = []
     for data_key, data_val in data_keys_and_values:
-        if data_val < outlier_bounds[0] or data_val > outlier_bounds[1]:
-            outliers.append(data_key)
-    return outliers
+        if data_val < outlier_bounds[0]:
+            low_outliers.append((data_key, data_val))
+        elif data_val > outlier_bounds[1]:
+            high_outliers.append((data_key, data_val))
+    return low_outliers, high_outliers
 
 
 def get_cem_param_pairs(full_data):
