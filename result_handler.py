@@ -12,6 +12,7 @@ from ptitprince import PtitPrince as pt
 import video_exporter
 from datetime import datetime
 import pandas as pd
+from create_griddly_env import create_griddly_env
 
 
 TEST_GROUP_SIZE = 30*4*3
@@ -29,7 +30,7 @@ class SubDataSet:
 
 
 def get_result_object():
-    result_file_name = 'prod8.json'#input('Enter the name of the result file: ')
+    result_file_name = input('Enter the name of the result file: ')
     with open(os.path.join('results', result_file_name), 'r') as result_file:
         result_object = json.load(result_file)
         return result_object
@@ -238,6 +239,58 @@ def find_outliers(data_keys_and_values, outlier_const=1.5):
     return low_outliers, high_outliers
 
 
+def plot_all_action_frequencies(data_set):
+    def get_action_name(env_, action):
+        return 'Idle' if action[1] == 0 else env_.action_names[action[0]]
+        
+    data = data_set.data
+    env = create_griddly_env('collector_game.yaml')
+    env.reset()
+    cem_name_lookup = get_cem_param_names(data)
+
+    labels = []
+    cem_keys = list(data['cem_params'])
+    cem_names = [cem_name_lookup[key] for key in cem_keys]
+    data_per_agent = []
+    for a in range(env.player_count):
+        data_per_agent.append([[] for _ in cem_keys])
+
+    for game_run in data['game_runs'].values():
+        agent_in_turn = 0
+        cem_key = game_run['CemParams']
+        cem_idx = cem_keys.index(cem_key)
+        for full_action in game_run['Actions']:
+            agent_action = full_action[agent_in_turn]
+            action_name = get_action_name(env, agent_action)
+            if action_name not in labels:
+                labels.append(action_name)
+                for agent_i in range(env.player_count):
+                    for data_list in data_per_agent[agent_i]:
+                        data_list.append(0)
+            action_name_idx = labels.index(action_name)
+            data_per_agent[agent_in_turn][cem_idx][action_name_idx] += 1
+            agent_in_turn = (agent_in_turn + 1) % env.player_count
+    plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
+    plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
+    
+
+def plot_grouped_bars(title, labels, data_sets, legend_names, y_name, x_name):
+    x = np.arange(len(labels))
+    width = 0.25
+    figure, ax = plt.subplots()
+    for i in range(len(data_sets)):
+        data_set = data_sets[i]
+        legend_name = legend_names[i]
+        x_positions = x - (len(legend_names) - 1) * width/2 + i * width
+        ax.bar(x_positions, data_set, width, label=legend_name)
+    ax.set_ylabel('Occurrences')
+    ax.set_xticks(x, labels, rotation='vertical')
+    ax.legend()
+    ax.set_title(title)
+    figure.set_tight_layout(True)
+    plt.show()
+
+
 def get_cem_param_pairs(full_data):
     cem_keys = list(full_data['cem_params'].keys())
     cem_pairs = {tuple(sorted(pair)) for pair in product(cem_keys, repeat=2) if pair[0] != pair[1]}
@@ -306,16 +359,10 @@ def create_data_sets(full_data):
     return data_sets
 
 
-def count_unique_maps(full_data):
-    found_maps = set()
-    for run in full_data['game_runs'].values():
-        found_maps.add(run['Map'])
-    return len(found_maps)
-
-
 def do_plotting(full_data):
     test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
+        plot_all_action_frequencies(sub_data)
         plot_difference_histograms(sub_data)
         plot_avg_diff_rainclouds(sub_data)
     plot_run_score_matrix(full_data)
@@ -349,7 +396,7 @@ if __name__ == '__main__':
     result_obj = get_result_object()
     complete_test_group_data = select_complete_test_groups(result_obj)
     
-    plotting = input('Plot all figures? (y/n) ')
+    plotting = input('Plot figures? (y/n) ')
     if plotting == 'y':
         do_plotting(complete_test_group_data)
 
