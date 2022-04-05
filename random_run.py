@@ -17,10 +17,11 @@ if __name__ == '__main__':
         'width': 8,
         'height': 8,
         'player_count': 2,
-        'bounding_obj_char': 'w'
+        'bounding_obj_char': 'w',
+        'obj_char_to_amount': {'w': 10, 's': 15}
     }
-    obj_char_to_amount = {'w': 10, 's': 15}
-    level_generator = SimpleLevelGenerator(map_config, obj_char_to_amount)
+    
+    level_generator = SimpleLevelGenerator(map_config)
     env.reset(level_string=level_generator.generate())
     
     for s in range(10000):

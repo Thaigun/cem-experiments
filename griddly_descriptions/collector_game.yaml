@@ -379,7 +379,7 @@ Actions:
                 Arguments: [health, 0]
                 Commands:
                   - remove: true
-#11
+#internal
   - Name: ranged_projectile
     InputMapping:
       Internal: true
@@ -410,7 +410,7 @@ Actions:
             - remove: true
         Dst:
           Object: [wall, projectile]
-#12
+#11
   - Name: burp_star
     InputMapping:
       Relative: true
