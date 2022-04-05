@@ -11,7 +11,7 @@ dependencies:
   - pip:
     - firebase-admin
     - gym==0.21.0
-    - griddly==1.2.35
+    - griddly
     - psutil
     - pyglet
     - pygame

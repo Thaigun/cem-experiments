@@ -29,7 +29,7 @@ class SubDataSet:
 
 
 def get_result_object():
-    result_file_name = 'prod8.json'#input('Enter the name of the result file: ')
+    result_file_name = input('Enter the name of the result file: ')
     with open(os.path.join('results', result_file_name), 'r') as result_file:
         result_object = json.load(result_file)
         return result_object
@@ -113,15 +113,20 @@ def plot_difference_histograms(data_set):
     score_diffs_per_pair = extract_score_diffs_per_pair(data, test_batches)
 
     emp_param_names = get_cem_param_names(data)
-    sub_plot_idx = 0
+    pair_order = [
+        'Supportive-Antagonistic',
+        'Random-Antagonistic',
+        'Random-Supportive'
+    ]
+
     for pair, diffs in score_diffs_per_pair.items():
-        print(emp_param_names[pair[1]], '-', emp_param_names[pair[0]])
-        print(np.mean(diffs))
+        pair_name = emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]]
+        print(pair_name, 'Mean difference:', np.mean(diffs))
+        sub_plot_idx = pair_order.index(pair_name)
         axs[sub_plot_idx].hist(diffs, bins=16, range=(-8.5, 7.5), linewidth=0.5, edgecolor='white')
-        axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + ' - ' + emp_param_names[pair[0]])
+        axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]])
         axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         axs[sub_plot_idx].set_ylabel('Number of runs')
-        sub_plot_idx += 1
     plt.show()
 
         
@@ -158,13 +163,13 @@ def plot_run_score_matrix(full_data):
     
     figure, axs = plt.subplots(1, len(full_data['map_params']))
     figure.set_tight_layout(True)
+    cem_order = ['Supportive', 'Random', 'Antagonistic']
     runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
     map_names = get_map_param_names(full_data)
-    cem_names = get_cem_param_names(full_data).values()
     map_key_i = 0
     for map_param_key, runs in runs_per_map.items():
         data_frame = prepare_raincloud_data(full_data, runs)
-        axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_names, bw=0.2)
+        axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_order, bw=0.2)
         axs[map_key_i].set_title(map_names[map_param_key[0]])
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
@@ -216,7 +221,7 @@ def plot_avg_diff_rainclouds(data_set):
         pd_ready_data += [(cem_pair_name, data_point[1]) for data_point in data_points]
     data_frame = pd.DataFrame.from_records(pd_ready_data, columns=['cem_pair', 'score_diff_avg'])
 
-    axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-sup', 'rnd-ant'], orient='h', bw=0.2)
+    axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
     axs.xaxis.grid(visible=True)
     axs.set_title('Average score difference between different CEM-parametrizations\n' + data_set.name)
     plt.show()
@@ -299,7 +304,7 @@ def create_data_sets(full_data):
 
     data_sets.append(SubDataSet('All test runs', full_data))
     data_sets.append(SubDataSet('Player with separate collect action', build_data_for_selected_runs(full_data, separate_collect_runs)))
-    data_sets.append(SubDataSet('Player\'s collect action embedded to movement', build_data_for_selected_runs(full_data, separate_collect_runs)))
+    data_sets.append(SubDataSet('Player\'s collect action embedded to movement', build_data_for_selected_runs(full_data, embedded_collect_runs)))
     data_sets.append(SubDataSet('Small maps', build_data_for_selected_runs(full_data, small_map_runs)))
     data_sets.append(SubDataSet('Big maps', build_data_for_selected_runs(full_data, big_map_runs)))
     data_sets.append(SubDataSet('Small maps and separate collect action', build_data_for_selected_runs(full_data, small_and_separate_runs)))
