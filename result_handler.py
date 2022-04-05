@@ -83,7 +83,7 @@ def select_with_collect_type(full_data, type):
     selected_runs = []
     for game_rules_obj in full_data['game_rules'].values():
         separate_collect = False
-        if 'collect' in game_rules_obj['PlayerActions'] or 'collect_ahead' in game_rules_obj['PlayerActions']:
+        if 'collect' in game_rules_obj['PlayerActions'] or 'collect_from_ahead' in game_rules_obj['PlayerActions']:
             separate_collect = True
         if separate_collect and type is CollectActionType.SEPARATE or not separate_collect and type is CollectActionType.EMBEDDED:
             selected_runs += [game_run_key for game_run_key in game_rules_obj['game_runs'].values()]
@@ -246,7 +246,7 @@ def find_outliers(data_keys_and_values, outlier_const=1.5):
 
 def plot_all_action_frequencies(data_set):
     def get_action_name(env_, action):
-        return 'Idle' if action[1] == 0 else env_.action_names[action[0]]
+        return 'idle' if action[1] == 0 else env_.action_names[action[0]]
         
     data = data_set.data
     env = create_griddly_env('collector_game.yaml')
@@ -257,7 +257,7 @@ def plot_all_action_frequencies(data_set):
     cem_keys = list(data['cem_params'])
     cem_names = [cem_name_lookup[key] for key in cem_keys]
     data_per_agent = []
-    for a in range(env.player_count):
+    for agent_i in range(env.player_count):
         data_per_agent.append([[] for _ in cem_keys])
 
     for game_run in data['game_runs'].values():
@@ -275,6 +275,13 @@ def plot_all_action_frequencies(data_set):
             action_name_idx = labels.index(action_name)
             data_per_agent[agent_in_turn][cem_idx][action_name_idx] += 1
             agent_in_turn = (agent_in_turn + 1) % env.player_count
+
+    for agent_i in range(len(data_per_agent)):
+        for cem_i in range(len(data_per_agent[agent_i])):
+            sorted_by_labels = [sorted_data for _, sorted_data in sorted(zip(labels, data_per_agent[agent_i][cem_i]), key=lambda x: x[0])]
+            data_per_agent[agent_i][cem_i] = sorted_by_labels
+    labels.sort()
+    
     plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
     plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
     
