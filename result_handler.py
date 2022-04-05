@@ -16,6 +16,7 @@ from create_griddly_env import create_griddly_env
 
 
 TEST_GROUP_SIZE = 30*4*3
+save_folder = ''
 
 
 class CollectActionType(Enum):
@@ -24,7 +25,8 @@ class CollectActionType(Enum):
 
 
 class SubDataSet:
-    def __init__(self, name, data):
+    def __init__(self, file_prefix, name, data):
+        self.file_prefix = file_prefix
         self.name = name
         self.data = data
 
@@ -106,7 +108,7 @@ def select_with_run_score(full_data, min_score, max_score):
     return selected_runs
 
 
-def plot_difference_histograms(data_set):
+def plot_difference_histograms(data_set, save_folder):
     figure, axs = plt.subplots(3, 1)
     figure.set_tight_layout(True)
     data = data_set.data
@@ -128,7 +130,12 @@ def plot_difference_histograms(data_set):
         axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]])
         axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         axs[sub_plot_idx].set_ylabel('Number of runs')
-    plt.show()
+    figure.set_size_inches(5.5, 7.5)
+    if save_folder:
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'diff_histograms.png'))
+        plt.close()
+    else:
+        plt.show()
 
         
 def extract_score_diffs_per_pair(full_data, test_batches):
@@ -150,7 +157,7 @@ def extract_score_diffs_per_pair(full_data, test_batches):
     return score_diffs_per_pair
 
 
-def plot_run_score_matrix(full_data):
+def plot_run_score_matrix(full_data, save_folder):
     def prepare_raincloud_data(full_data, from_runs):
         cem_names = get_cem_param_names(full_data)
         data = build_data_for_selected_runs(full_data, from_runs)
@@ -175,10 +182,15 @@ def plot_run_score_matrix(full_data):
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
         map_key_i += 1
-    plt.show()
+    figure.set_size_inches(11, 6)
+    if save_folder:
+        figure.savefig(os.path.join(save_folder, 'avg_result_matrix.png'))
+        plt.close()
+    else:
+        plt.show()
 
 
-def plot_avg_diff_rainclouds(data_set):
+def plot_avg_diff_rainclouds(data_set, save_folder):
     def make_cem_param_name(cem_param_names, pair):
         short_names = {
             'Supportive': 'sup',
@@ -224,8 +236,13 @@ def plot_avg_diff_rainclouds(data_set):
 
     axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
     axs.xaxis.grid(visible=True)
-    axs.set_title('Average score difference between different CEM-parametrizations\n' + data_set.name)
-    plt.show()
+    axs.set_title('Mean score difference between different CEM-parametrizations\n' + data_set.name)
+    figure.set_size_inches(5.5, 7.5)
+    if save_folder:
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix+'avg_diff_raincloud.png'))
+        plt.close()
+    else:
+        plt.show()
 
 
 def find_outliers(data_keys_and_values, outlier_const=1.5):
@@ -244,7 +261,7 @@ def find_outliers(data_keys_and_values, outlier_const=1.5):
     return low_outliers, high_outliers
 
 
-def plot_all_action_frequencies(data_set):
+def plot_all_action_frequencies(data_set, save_folder):
     def get_action_name(env_, action):
         return 'idle' if action[1] == 0 else env_.action_names[action[0]]
         
@@ -282,9 +299,20 @@ def plot_all_action_frequencies(data_set):
             data_per_agent[agent_i][cem_i] = sorted_by_labels
     labels.sort()
     
-    plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
-    plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
-    
+    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
+    if save_folder:
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq.png'))
+        plt.close()
+    else:
+        plt.show()
+
+    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
+    if save_folder:
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq.png'))
+        plt.close()
+    else:
+        plt.show()
+
 
 def plot_grouped_bars(title, labels, data_sets, legend_names, y_name, x_name):
     x = np.arange(len(labels))
@@ -300,7 +328,7 @@ def plot_grouped_bars(title, labels, data_sets, legend_names, y_name, x_name):
     ax.legend()
     ax.set_title(title)
     figure.set_tight_layout(True)
-    plt.show()
+    return figure, ax
 
 
 def get_cem_param_pairs(full_data):
@@ -362,22 +390,26 @@ def create_data_sets(full_data):
     big_map_runs = select_with_map_size(full_data, 14, 14)
     small_and_separate_runs = set(separate_collect_runs).intersection(set(small_map_runs))
 
-    data_sets.append(SubDataSet('All test runs', full_data))
-    data_sets.append(SubDataSet('Player with separate collect action', build_data_for_selected_runs(full_data, separate_collect_runs)))
-    data_sets.append(SubDataSet('Player\'s collect action embedded to movement', build_data_for_selected_runs(full_data, embedded_collect_runs)))
-    data_sets.append(SubDataSet('Small maps', build_data_for_selected_runs(full_data, small_map_runs)))
-    data_sets.append(SubDataSet('Big maps', build_data_for_selected_runs(full_data, big_map_runs)))
-    data_sets.append(SubDataSet('Small maps and separate collect action', build_data_for_selected_runs(full_data, small_and_separate_runs)))
+    data_sets.append(SubDataSet('allruns_', 'All test runs', full_data))
+    data_sets.append(SubDataSet('separatecollect_', 'Player with separate collect action', build_data_for_selected_runs(full_data, separate_collect_runs)))
+    data_sets.append(SubDataSet('embeddedcollect_', 'Player\'s collect action embedded to movement', build_data_for_selected_runs(full_data, embedded_collect_runs)))
+    data_sets.append(SubDataSet('smallmaps_', 'Small maps', build_data_for_selected_runs(full_data, small_map_runs)))
+    data_sets.append(SubDataSet('bigmaps_', 'Big maps', build_data_for_selected_runs(full_data, big_map_runs)))
+    data_sets.append(SubDataSet('smallmapsseparatecollect_', 'Small maps and separate collect action', build_data_for_selected_runs(full_data, small_and_separate_runs)))
     return data_sets
 
 
 def do_plotting(full_data):
+    save_folder = input('Enter folder to save plots to (empty for no save): ')
+    if save_folder and not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+
     test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
-        plot_all_action_frequencies(sub_data)
-        plot_difference_histograms(sub_data)
-        plot_avg_diff_rainclouds(sub_data)
-    plot_run_score_matrix(full_data)
+        plot_all_action_frequencies(sub_data, save_folder)
+        plot_difference_histograms(sub_data, save_folder)
+        plot_avg_diff_rainclouds(sub_data, save_folder)
+    plot_run_score_matrix(full_data, save_folder)
 
 
 def do_zero_score_search(full_data):
