@@ -127,8 +127,10 @@ def plot_difference_histograms(data_set, save_folder):
         print(pair_name, 'Mean difference:', np.mean(diffs))
         sub_plot_idx = pair_order.index(pair_name)
         axs[sub_plot_idx].hist(diffs, bins=16, range=(-8.5, 7.5), linewidth=0.5, edgecolor='white')
-        axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]])
-        axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
+        if sub_plot_idx == 0:
+            axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]])
+        if sub_plot_idx == len(pair_order) - 1:
+            axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         axs[sub_plot_idx].set_ylabel('Number of runs')
     figure.set_size_inches(5.5, 7.5)
     if save_folder:

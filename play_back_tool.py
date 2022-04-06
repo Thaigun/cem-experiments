@@ -62,7 +62,8 @@ def replay_game(env, actions, delay):
     agent_idx = 0
     for action in actions:
         env.step(action)
-        print(env_util.action_to_str(env, action[agent_idx]))
+        player_name = 'plr' if agent_idx == 0 else 'npc'
+        print(player_name, env_util.action_to_str(env, action[agent_idx]))
         env.render(observer='global')
         time.sleep(delay)
         agent_idx = (agent_idx + 1) % 2

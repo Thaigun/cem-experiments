@@ -135,3 +135,4 @@ cert/*.json
 results/*.json
 .env
 video_exports/
+plots/
