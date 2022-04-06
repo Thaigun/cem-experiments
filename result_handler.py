@@ -425,11 +425,21 @@ def do_zero_score_search(full_data):
 
 
 def do_save_video_replays(full_data):
-    game_run_groups = group_runs_by_params(full_data, ['GameRules', 'Map'])
-    random_group_keys = random.sample(list(game_run_groups), 10)
+    game_rules_key = input('Enter game rules key (empty for random): ')
+    map_params_key = input('Enter map params key (empty for random): ')
+    n = int(input('Enter number of replay groups to save: '))
+    game_run_groups = group_runs_by_params(full_data, ['GameRules', 'Map', 'MapParams'])
+
+    filtered_group_keys = list(game_run_groups)
+    if game_rules_key:
+        filtered_group_keys = [key for key in filtered_group_keys if key[0] == game_rules_key]
+    if map_params_key:
+        filtered_group_keys = [key for key in filtered_group_keys if key[2] == map_params_key]
+
+    selected_group_keys = random.sample(filtered_group_keys, n)
     cem_param_names = get_cem_param_names(full_data)
     sub_dir = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    for group_key in random_group_keys:
+    for group_key in selected_group_keys:
         game_rules = full_data['game_rules'][group_key[0]]
         map_hash = str(hash(group_key[1]))[:5]
         sub_sub_dir = os.path.join(sub_dir, '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions']) + map_hash)
