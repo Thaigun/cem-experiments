@@ -205,10 +205,10 @@ def plot_avg_diff_rainclouds(data_set, save_folder):
         print('Outliers for pair', title)
         print('Low outliers:')
         for lo_outlier in lo_outliers:
-            print('GameRules:', lo_outlier[0][0], 'MapParams:', lo_outlier[0][1], 'Value:', lo_outlier[1])
+            print('GameRules:', lo_outlier[0][0], 'MapParams:', lo_outlier[0][2], 'Value:', lo_outlier[1])
         print('High outliers:')
         for hi_outlier in hi_outliers:
-            print('GameRules:', hi_outlier[0][0], 'MapParams:', hi_outlier[0][1], 'Value:', hi_outlier[1])
+            print('GameRules:', hi_outlier[0][0], 'MapParams:', hi_outlier[0][2], 'Value:', hi_outlier[1])
 
     figure, axs = plt.subplots()
     data = data_set.data
