@@ -16,7 +16,8 @@ from create_griddly_env import create_griddly_env
 
 
 TEST_GROUP_SIZE = 30*4*3
-save_folder = ''
+PAPER_WIDTH = (29.7-5)/2.54
+PAPER_HEIGHT = (21.0-6)/2.54
 
 
 class CollectActionType(Enum):
@@ -131,9 +132,9 @@ def plot_difference_histograms(data_set, save_folder):
         if sub_plot_idx == len(pair_order) - 1:
             axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
         axs[sub_plot_idx].set_ylabel('Number of runs')
-    figure.set_size_inches(5.5, 7.5)
+    figure.set_size_inches(PAPER_WIDTH/3, PAPER_HEIGHT)
     if save_folder:
-        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'diff_histograms.png'))
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'diff_histograms.svg'))
         plt.close()
     else:
         plt.show()
@@ -161,16 +162,16 @@ def extract_score_diffs_per_pair(full_data, test_batches):
 def plot_run_score_raincloud(data_set, save_folder):
     data = data_set.data
     figure, ax = plt.subplots()
-    figure.set_tight_layout(True)
     cem_order = ['Supportive', 'Random', 'Antagonistic']
     cem_names = get_cem_param_names(data)
     data_frame = prepare_raincloud_data(data, cem_names)
     ax = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, ax=ax, order=cem_order, orient='h', palette='Set2')
     ax.set_title('Mean scores of test groups\n' + data_set.name)
     ax.xaxis.grid(visible=True)
-    figure.set_size_inches(5.5, 7.5)
+    figure.set_size_inches(PAPER_WIDTH/2, PAPER_HEIGHT)
+    figure.set_tight_layout(True)
     if save_folder:
-        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'avg_score_raincloud.png'))
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'avg_score_raincloud.svg'))
         plt.close()
     else:
         plt.show()
@@ -178,7 +179,6 @@ def plot_run_score_raincloud(data_set, save_folder):
 
 def plot_run_score_matrix(full_data, save_folder):
     figure, axs = plt.subplots(1, len(full_data['map_params']))
-    figure.set_tight_layout(True)
     cem_order = ['Supportive', 'Random', 'Antagonistic']
     runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
     map_names = get_map_param_names(full_data)
@@ -192,9 +192,10 @@ def plot_run_score_matrix(full_data, save_folder):
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
         map_key_i += 1
-    figure.set_size_inches(11, 6)
+    figure.set_size_inches(PAPER_WIDTH, PAPER_HEIGHT)
+    figure.set_tight_layout(True)
     if save_folder:
-        figure.savefig(os.path.join(save_folder, 'avg_result_matrix.png'))
+        figure.savefig(os.path.join(save_folder, 'avg_result_matrix.svg'))
         plt.close()
     else:
         plt.show()
@@ -257,9 +258,10 @@ def plot_avg_diff_rainclouds(data_set, save_folder):
     axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set1', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
     axs.xaxis.grid(visible=True)
     axs.set_title('Mean score differences\n' + data_set.name)
-    figure.set_size_inches(5.5, 7.5)
+    figure.set_size_inches(PAPER_WIDTH/2, PAPER_HEIGHT)
+    figure.set_tight_layout(True)
     if save_folder:
-        figure.savefig(os.path.join(save_folder, data_set.file_prefix+'avg_diff_raincloud.png'))
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix+'avg_diff_raincloud.svg'))
         plt.close()
     else:
         plt.show()
@@ -321,14 +323,14 @@ def plot_all_action_frequencies(data_set, save_folder):
     
     fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
     if save_folder:
-        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq.png'))
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq.svg'))
         plt.close()
     else:
         plt.show()
 
     fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
     if save_folder:
-        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq.png'))
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq.svg'))
         plt.close()
     else:
         plt.show()
@@ -465,6 +467,16 @@ def do_save_video_replays(full_data):
         for game_run in game_run_groups[group_key]:
             cem_param_name = cem_param_names[game_run['CemParams']]
             video_exporter.make_video_from_data(game_run, sub_sub_dir, cem_param_name, 40)
+
+
+def print_action_appearances(data):
+    action_appearances = {}
+    for rule_set in data['game_rules'].values():
+        for action in rule_set['NpcActions']:
+            if action not in action_appearances:
+                action_appearances[action] = 0
+            action_appearances[action] += 1
+    print(str(action_appearances))
 
 
 if __name__ == '__main__':
