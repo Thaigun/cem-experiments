@@ -158,26 +158,35 @@ def extract_score_diffs_per_pair(full_data, test_batches):
     return score_diffs_per_pair
 
 
+def plot_run_score_raincloud(data_set, save_folder):
+    data = data_set.data
+    figure, ax = plt.subplots()
+    figure.set_tight_layout(True)
+    cem_order = ['Supportive', 'Random', 'Antagonistic']
+    cem_names = get_cem_param_names(data)
+    data_frame = prepare_raincloud_data(data, cem_names)
+    ax = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, ax=ax, order=cem_order, orient='h', palette='Set2')
+    ax.set_title('Mean scores of test groups\n' + data_set.name)
+    ax.xaxis.grid(visible=True)
+    figure.set_size_inches(5.5, 7.5)
+    if save_folder:
+        figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'avg_score_raincloud.png'))
+        plt.close()
+    else:
+        plt.show()
+
+
 def plot_run_score_matrix(full_data, save_folder):
-    def prepare_raincloud_data(full_data, from_runs):
-        cem_names = get_cem_param_names(full_data)
-        data = build_data_for_selected_runs(full_data, from_runs)
-        groups_to_average = group_runs_by_params(data, ['CemParams', 'GameRules'])
-        avg_scores_per_group = {group_key: np.mean([run['Score'] for run in group_runs]) for group_key, group_runs in groups_to_average.items()}
-        df_data = []
-        for group_key, avg_score in avg_scores_per_group.items():
-            cem_name = cem_names[group_key[0]]
-            df_data.append((cem_name, avg_score))
-        return pd.DataFrame.from_records(df_data, columns=['cem_param', 'action_set_avg'])
-    
     figure, axs = plt.subplots(1, len(full_data['map_params']))
     figure.set_tight_layout(True)
     cem_order = ['Supportive', 'Random', 'Antagonistic']
     runs_per_map = group_runs_by_params(full_data, ['MapParams'], return_keys=True)
     map_names = get_map_param_names(full_data)
     map_key_i = 0
+    cem_names = get_cem_param_names(full_data)
     for map_param_key, runs in runs_per_map.items():
-        data_frame = prepare_raincloud_data(full_data, runs)
+        data = build_data_for_selected_runs(full_data, runs)
+        data_frame = prepare_raincloud_data(data, cem_names)
         axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_order, bw=0.2)
         axs[map_key_i].set_title(map_names[map_param_key[0]])
         axs[map_key_i].xaxis.grid(visible=True)
@@ -189,6 +198,16 @@ def plot_run_score_matrix(full_data, save_folder):
         plt.close()
     else:
         plt.show()
+
+
+def prepare_raincloud_data(data, cem_names):
+    groups_to_average = group_runs_by_params(data, ['CemParams', 'GameRules', 'MapParams'])
+    avg_scores_per_group = {group_key: np.mean([run['Score'] for run in group_runs]) for group_key, group_runs in groups_to_average.items()}
+    df_data = []
+    for group_key, avg_score in avg_scores_per_group.items():
+        cem_name = cem_names[group_key[0]]
+        df_data.append((cem_name, avg_score))
+    return pd.DataFrame.from_records(df_data, columns=['cem_param', 'action_set_avg'])
 
 
 def plot_avg_diff_rainclouds(data_set, save_folder):
@@ -235,9 +254,9 @@ def plot_avg_diff_rainclouds(data_set, save_folder):
         pd_ready_data += [(cem_pair_name, data_point[1]) for data_point in data_points]
     data_frame = pd.DataFrame.from_records(pd_ready_data, columns=['cem_pair', 'score_diff_avg'])
 
-    axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set2', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
+    axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set1', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
     axs.xaxis.grid(visible=True)
-    axs.set_title('Mean score difference between different CEM-parametrizations\n' + data_set.name)
+    axs.set_title('Mean score differences\n' + data_set.name)
     figure.set_size_inches(5.5, 7.5)
     if save_folder:
         figure.savefig(os.path.join(save_folder, data_set.file_prefix+'avg_diff_raincloud.png'))
@@ -408,6 +427,7 @@ def do_plotting(full_data):
     test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
         plot_all_action_frequencies(sub_data, save_folder)
+        plot_run_score_raincloud(sub_data, save_folder)
         plot_difference_histograms(sub_data, save_folder)
         plot_avg_diff_rainclouds(sub_data, save_folder)
     plot_run_score_matrix(full_data, save_folder)
