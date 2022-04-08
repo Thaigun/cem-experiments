@@ -182,7 +182,7 @@ def plot_difference_histograms(data_set, save_folder, make_max_min_videos=False)
         axs[sub_plot_idx].set_title(data_set.name + ', ' + emp_param_names[pair[1]] + '-' + emp_param_names[pair[0]])
         if sub_plot_idx == len(pair_order) - 1:
             axs[sub_plot_idx].set_xlabel('Score difference between CEM-parametrizations')
-        axs[sub_plot_idx].set_ylabel('Number of runs')
+        axs[sub_plot_idx].set_ylabel('Number of pairs')
     figure.set_size_inches(PAPER_WIDTH/3, PAPER_HEIGHT)
     if save_folder:
         figure.savefig(os.path.join(save_folder, data_set.file_prefix + 'diff_histograms.svg'))
@@ -249,7 +249,7 @@ def plot_run_score_matrix(full_data, save_folder):
         data = build_data_for_selected_runs(full_data, runs)
         data_frame = prepare_raincloud_data(data, cem_names)
         axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_mean', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_order, bw=0.2)
-        axs[map_key_i].set_title('Map param' + map_names[map_param_key[0]], font_size=10)
+        axs[map_key_i].set_title('Map param: ' + map_names[map_param_key[0]], fontsize=10)
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
         axs[map_key_i].set_xlim(SCORE_X_LIM)
@@ -270,7 +270,7 @@ def prepare_raincloud_data(data, cem_names):
     for group_key, avg_score in avg_scores_per_group.items():
         cem_name = cem_names[group_key[0]]
         df_data.append((cem_name, avg_score))
-    return pd.DataFrame.from_records(df_data, columns=['cem_param', 'action_set_avg'])
+    return pd.DataFrame.from_records(df_data, columns=['cem_param', 'action_set_mean'])
 
 
 def plot_avg_diff_rainclouds(data_set, save_folder):
@@ -384,14 +384,14 @@ def plot_all_action_frequencies(data_set, save_folder):
             data_per_agent[agent_i][cem_i] = sorted_by_labels
     labels.sort()
     
-    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names, 'Frequency', 'Action')
+    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names)
     if save_folder:
         fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq.svg'))
         plt.close()
     else:
         plt.show()
 
-    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names, 'Frequency', 'Action')
+    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names)
     if save_folder:
         fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq.svg'))
         plt.close()
@@ -399,7 +399,7 @@ def plot_all_action_frequencies(data_set, save_folder):
         plt.show()
 
 
-def plot_grouped_bars(title, labels, data_sets, legend_names, y_name, x_name):
+def plot_grouped_bars(title, labels, data_sets, legend_names):
     x = np.arange(len(labels))
     width = 0.25
     figure, ax = plt.subplots()
@@ -410,6 +410,7 @@ def plot_grouped_bars(title, labels, data_sets, legend_names, y_name, x_name):
         ax.bar(x_positions, data_set, width, label=legend_name)
     ax.set_ylabel('Occurrences')
     ax.set_xticks(x, labels, rotation='vertical')
+    #ax.set_yscale('log')
     ax.legend()
     ax.set_title(title)
     figure.set_tight_layout(True)
