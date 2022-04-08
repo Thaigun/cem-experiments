@@ -9,6 +9,7 @@ from itertools import product
 import play_back_tool
 import action_space_builder
 from ptitprince import PtitPrince as pt
+from test_group import get_cem_parameters
 import video_exporter
 from datetime import datetime
 import pandas as pd
@@ -19,7 +20,7 @@ TEST_GROUP_SIZE = 30*4*3
 PAPER_WIDTH = (29.7-5)/2.54
 PAPER_HEIGHT = (21.0-6)/2.54
 DIFF_X_LIM = [-1.0, 1.5]
-SCORE_X_LIM = [1.0, 5.5]
+SCORE_X_LIM = [0.88, 5.5]
 
 
 class CollectActionType(Enum):
@@ -32,6 +33,53 @@ class SubDataSet:
         self.file_prefix = file_prefix
         self.name = name
         self.data = data
+
+
+class ScoreDifferenceRecorder:
+    def __init__(self, cem_pairs):
+        self.max_diff_per_pair = {pair: -1000000 for pair in cem_pairs}
+        self.runs_with_max_diff = {pair: [] for pair in cem_pairs}
+        self.min_diff_per_pair = {pair: 1000000 for pair in cem_pairs}
+        self.runs_with_min_diff = {pair: [] for pair in cem_pairs}
+        self.cem_pairs = cem_pairs
+
+    def update_with_diff(self, diff, cem_pair, run_key1, run_key2):
+        if diff > self.max_diff_per_pair[cem_pair]:
+            self.max_diff_per_pair[cem_pair] = diff
+            self.runs_with_max_diff[cem_pair] = [(run_key2, run_key1)]
+        elif diff == self.max_diff_per_pair[cem_pair]:
+            self.runs_with_max_diff[cem_pair].append((run_key2, run_key1))
+        if diff < self.min_diff_per_pair[cem_pair]:
+            self.min_diff_per_pair[cem_pair] = diff
+            self.runs_with_min_diff[cem_pair] = [(run_key2, run_key1)]
+        elif diff == self.min_diff_per_pair[cem_pair]:
+            self.runs_with_min_diff[cem_pair].append((run_key2, run_key1))
+
+    def make_videos(self, data_set):
+        full_data = data_set.data
+        subdir = 'extreme_differences'
+        cem_names = get_cem_param_names(full_data)
+        for cem_pair in list(self.cem_pairs):
+            i = 0
+            for run_key1, run_key2 in self.runs_with_max_diff[cem_pair]:
+                self.build_path_and_videos(cem_names, data_set, subdir, cem_pair, run_key1, run_key2, 'max', i)
+                i += 1
+            i = 0
+            for run_key1, run_key2 in self.runs_with_min_diff[cem_pair]:
+                self.build_path_and_videos(cem_names, data_set, subdir, cem_pair, run_key1, run_key2, 'min', i)
+                i += 1
+
+    def build_path_and_videos(self, cem_names, data_set, subdir, cem_pair, run_key1, run_key2, min_or_max, stepper):
+        assert(min_or_max in ['max', 'min'])
+        run1 = data_set.data['game_runs'][run_key1]
+        run2 = data_set.data['game_runs'][run_key2]
+        subdir2 = data_set.name
+        subdir3 = '_'.join(sorted([cem_names[run1['CemParams']], cem_names[run2['CemParams']]]))
+        max_or_min_diff = str(self.max_diff_per_pair[cem_pair]) if min_or_max == 'max' else str(self.min_diff_per_pair[cem_pair])
+        file_name1 = '_'.join([max_or_min_diff, cem_names[run1['CemParams']], str(stepper), run_key1])
+        video_exporter.make_video_from_data(run1, os.path.join(subdir, subdir2, subdir3, min_or_max), file_name1, frames_per_state=20)
+        file_name2 = '_'.join([max_or_min_diff, cem_names[run2['CemParams']], str(stepper), run_key2])
+        video_exporter.make_video_from_data(run2, os.path.join(subdir, subdir2, subdir3, min_or_max), file_name2, frames_per_state=20)
 
 
 def get_result_object():
@@ -112,12 +160,12 @@ def select_with_run_score(full_data, min_score, max_score):
     return selected_runs
 
 
-def plot_difference_histograms(data_set, save_folder):
+def plot_difference_histograms(data_set, save_folder, make_max_min_videos=False):
     figure, axs = plt.subplots(3, 1)
     figure.set_tight_layout(True)
     data = data_set.data
-    test_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'Map'])
-    score_diffs_per_pair = extract_score_diffs_per_pair(data, test_batches)
+    test_batches = group_runs_by_params(data, ['GriddlyDescription', 'GameRules', 'Map'], return_keys=True)
+    score_diffs_per_pair = extract_score_diffs_per_pair(data_set, test_batches, make_max_min_videos)
 
     emp_param_names = get_cem_param_names(data)
     pair_order = [
@@ -143,14 +191,20 @@ def plot_difference_histograms(data_set, save_folder):
         plt.show()
 
         
-def extract_score_diffs_per_pair(full_data, test_batches):
+def extract_score_diffs_per_pair(data_set, test_batches, make_max_min_videos=False):
+    full_data = data_set.data
     cem_pairs = get_cem_param_pairs(full_data)
     score_diffs_per_pair = {pair: [] for pair in cem_pairs}
+    
+    diff_recorder = ScoreDifferenceRecorder(cem_pairs)
+    
     for test_batch in test_batches.values():
         for run1_idx in range(len(test_batch)):
             for run2_idx in range(run1_idx + 1, len(test_batch)):
-                run1 = test_batch[run1_idx]
-                run2 = test_batch[run2_idx]
+                run_key1 = test_batch[run1_idx]
+                run_key2 = test_batch[run2_idx]
+                run1 = full_data['game_runs'][run_key1]
+                run2 = full_data['game_runs'][run_key2]
                 if run1 == run2:
                     continue
                 cem_pair = tuple(sorted([run1['CemParams'], run2['CemParams']]))
@@ -159,6 +213,9 @@ def extract_score_diffs_per_pair(full_data, test_batches):
                 if run2['CemParams'] == cem_pair[0]:
                     diff = -diff
                 score_diffs_per_pair[cem_pair].append(diff)
+                diff_recorder.update_with_diff(diff, cem_pair, run_key1, run_key2)
+    if make_max_min_videos:
+        diff_recorder.make_videos(data_set)
     return score_diffs_per_pair
 
 
@@ -168,7 +225,7 @@ def plot_run_score_raincloud(data_set, save_folder):
     cem_order = ['Supportive', 'Random', 'Antagonistic']
     cem_names = get_cem_param_names(data)
     data_frame = prepare_raincloud_data(data, cem_names)
-    ax = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, ax=ax, order=cem_order, orient='h', palette='Set2')
+    ax = pt.RainCloud(x='cem_param', y='action_set_mean', data=data_frame, ax=ax, order=cem_order, orient='h', palette='Set2')
     ax.set_title('Mean scores of test groups\n' + data_set.name)
     ax.xaxis.grid(visible=True)
     ax.set_xlim(SCORE_X_LIM)
@@ -191,8 +248,8 @@ def plot_run_score_matrix(full_data, save_folder):
     for map_param_key, runs in runs_per_map.items():
         data = build_data_for_selected_runs(full_data, runs)
         data_frame = prepare_raincloud_data(data, cem_names)
-        axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_order, bw=0.2)
-        axs[map_key_i].set_title(map_names[map_param_key[0]])
+        axs[map_key_i] = pt.RainCloud(x='cem_param', y='action_set_mean', data=data_frame, palette='Set2', ax=axs[map_key_i], orient='h', order=cem_order, bw=0.2)
+        axs[map_key_i].set_title('Map param' + map_names[map_param_key[0]], font_size=10)
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
         axs[map_key_i].set_xlim(SCORE_X_LIM)
@@ -432,11 +489,12 @@ def do_plotting(full_data):
     if save_folder and not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
+    make_videos = input('Save videos of max and min score difference runs? (y/n): ') == 'y'
     test_data_sets = create_data_sets(full_data)
     for sub_data in test_data_sets:
         plot_all_action_frequencies(sub_data, save_folder)
         plot_run_score_raincloud(sub_data, save_folder)
-        plot_difference_histograms(sub_data, save_folder)
+        plot_difference_histograms(sub_data, save_folder, make_videos)
         plot_avg_diff_rainclouds(sub_data, save_folder)
     plot_run_score_matrix(full_data, save_folder)
 
@@ -455,7 +513,7 @@ def do_save_video_replays(full_data):
     game_rules_key = input('Enter game rules key (empty for random): ')
     map_params_key = input('Enter map params key (empty for random): ')
     n = int(input('Enter number of replay groups to save: '))
-    game_run_groups = group_runs_by_params(full_data, ['GameRules', 'Map', 'MapParams'])
+    game_run_groups = group_runs_by_params(full_data, ['GameRules', 'Map', 'MapParams'], return_keys=True)
 
     filtered_group_keys = list(game_run_groups)
     if game_rules_key:
@@ -470,9 +528,10 @@ def do_save_video_replays(full_data):
         game_rules = full_data['game_rules'][group_key[0]]
         map_hash = str(hash(group_key[1]))[:5]
         sub_sub_dir = os.path.join(sub_dir, '-'.join(game_rules['PlayerActions']) + '__' + '-'.join(game_rules['NpcActions']) + map_hash)
-        for game_run in game_run_groups[group_key]:
+        for game_run_key in game_run_groups[group_key]:
+            game_run = full_data['game_runs'][game_run_key]
             cem_param_name = cem_param_names[game_run['CemParams']]
-            video_exporter.make_video_from_data(game_run, sub_sub_dir, cem_param_name, 40)
+            video_exporter.make_video_from_data(game_run, sub_sub_dir, cem_param_name + game_run_key[7:], 40)
 
 
 def print_action_appearances(data):
