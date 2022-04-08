@@ -80,6 +80,11 @@ class AgentConf:
                                         trust_conf['Steps'] if 'Steps' in trust_conf else []))
         self.trust = trust_confs
 
+    def add_empowerment_pair(self, actor, perceptor, weight):
+        if self.empowerment_pairs is None:
+            self.empowerment_pairs = []
+        self.empowerment_pairs.append(EmpowermentPairConf(actor, perceptor, weight))
+
 
 class EmpowermentPairConf:
     def __init__(self, actor, perceptor, weight):

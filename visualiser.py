@@ -46,7 +46,7 @@ def plot_empowerment_landscape(env, position_emps, title):
     plt.show()
 
 
-def build_landscape(orig_env, player_id, game_conf, trust_correction=False, emp_idx=None, samples=1):
+def build_landscape(orig_env, player_id, game_conf, trust_correction=False, emp_idx=None, samples=1, non_blocking_objects=None):
     '''
     emp_idx: Which empowerment pair to calculate. If None, calculate all.
     '''
@@ -68,14 +68,21 @@ def build_landscape(orig_env, player_id, game_conf, trust_correction=False, emp_
             if coord in visited_coords:
                 blocked_move_ids.add(blocking_coords.index(coord) + 1)
         for o in env_state['Objects']:
-            if tuple(o['Location']) in blocking_coords:
+            if tuple(o['Location']) in blocking_coords and (non_blocking_objects is None or o['Name'] not in non_blocking_objects):
                 blocked_move_ids.add(blocking_coords.index(tuple(o['Location'])) + 1)
 
-        possible_move_actions = []
         if 'move' in actions_to_ids:
-            for action_id in actions_to_ids['move']:
-                if action_id not in blocked_move_ids:
-                    possible_move_actions.append([env.gdy.get_action_names().index('move'), action_id])
+            move_action = env.gdy.get_action_names().index('move')
+            move_action_ids = actions_to_ids['move']
+        elif 'lateral_move' in actions_to_ids:
+            move_action = env.gdy.get_action_names().index('lateral_move')
+            move_action_ids = actions_to_ids['lateral_move']
+
+        possible_move_actions = []
+        for action_id in move_action_ids:
+            if action_id not in blocked_move_ids:
+                possible_move_actions.append([move_action, action_id])
+        
         return possible_move_actions
 
     def get_unmove_action(action):
