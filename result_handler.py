@@ -18,6 +18,8 @@ from create_griddly_env import create_griddly_env
 TEST_GROUP_SIZE = 30*4*3
 PAPER_WIDTH = (29.7-5)/2.54
 PAPER_HEIGHT = (21.0-6)/2.54
+DIFF_X_LIM = [-1.0, 1.5]
+SCORE_X_LIM = [1.0, 5.5]
 
 
 class CollectActionType(Enum):
@@ -69,6 +71,7 @@ def build_data_for_selected_runs(full_data, run_keys):
     build_top_level_obj(full_data, run_keys, filtered_result, 'cem_params')
     build_top_level_obj(full_data, run_keys, filtered_result, 'map_params')
     return filtered_result
+
 
 def build_top_level_obj(full_data, run_keys, current_data_obj, top_level_name):
     for param_obj_key, param_obj in full_data[top_level_name].items():
@@ -168,6 +171,7 @@ def plot_run_score_raincloud(data_set, save_folder):
     ax = pt.RainCloud(x='cem_param', y='action_set_avg', data=data_frame, ax=ax, order=cem_order, orient='h', palette='Set2')
     ax.set_title('Mean scores of test groups\n' + data_set.name)
     ax.xaxis.grid(visible=True)
+    ax.set_xlim(SCORE_X_LIM)
     figure.set_size_inches(PAPER_WIDTH/2, PAPER_HEIGHT)
     figure.set_tight_layout(True)
     if save_folder:
@@ -191,6 +195,7 @@ def plot_run_score_matrix(full_data, save_folder):
         axs[map_key_i].set_title(map_names[map_param_key[0]])
         axs[map_key_i].xaxis.grid(visible=True)
         axs[map_key_i].yaxis.set_visible(map_key_i == 0)
+        axs[map_key_i].set_xlim(SCORE_X_LIM)
         map_key_i += 1
     figure.set_size_inches(PAPER_WIDTH, PAPER_HEIGHT)
     figure.set_tight_layout(True)
@@ -257,6 +262,7 @@ def plot_avg_diff_rainclouds(data_set, save_folder):
 
     axs = pt.RainCloud(x='cem_pair', y='score_diff_avg', data=data_frame, palette='Set1', ax=axs, order=['sup-ant', 'rnd-ant', 'rnd-sup'], orient='h', bw=0.2)
     axs.xaxis.grid(visible=True)
+    axs.set_xlim(DIFF_X_LIM)
     axs.set_title('Mean score differences\n' + data_set.name)
     figure.set_size_inches(PAPER_WIDTH/2, PAPER_HEIGHT)
     figure.set_tight_layout(True)
