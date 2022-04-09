@@ -384,22 +384,36 @@ def plot_all_action_frequencies(data_set, save_folder):
             data_per_agent[agent_i][cem_i] = sorted_by_labels
     labels.sort()
     
-    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[0], cem_names)
+    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name+', linear scale', labels, data_per_agent[0], cem_names)
     if save_folder:
         fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq.svg'))
         plt.close()
     else:
         plt.show()
 
-    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name, labels, data_per_agent[1], cem_names)
+    fig, ax = plot_grouped_bars('Frequency of Player actions with different CEM-parametrizations\n'+data_set.name+', logarithmic scale', labels, data_per_agent[0], cem_names, 'log')
+    if save_folder:
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'plr_action_freq_log.svg'))
+        plt.close()
+    else:
+        plt.show()
+
+    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name+', linear scale', labels, data_per_agent[1], cem_names)
     if save_folder:
         fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq.svg'))
         plt.close()
     else:
         plt.show()
 
+    fig, ax = plot_grouped_bars('Frequency of NPC actions with different CEM-parametrizations\n'+data_set.name+', logarithmic scale', labels, data_per_agent[1], cem_names, 'log')
+    if save_folder:
+        fig.savefig(os.path.join(save_folder, data_set.file_prefix + 'npc_action_freq_log.svg'))
+        plt.close()
+    else:
+        plt.show()
 
-def plot_grouped_bars(title, labels, data_sets, legend_names):
+
+def plot_grouped_bars(title, labels, data_sets, legend_names, y_scale='linear'):
     x = np.arange(len(labels))
     width = 0.25
     figure, ax = plt.subplots()
@@ -410,7 +424,7 @@ def plot_grouped_bars(title, labels, data_sets, legend_names):
         ax.bar(x_positions, data_set, width, label=legend_name)
     ax.set_ylabel('Occurrences')
     ax.set_xticks(x, labels, rotation='vertical')
-    #ax.set_yscale('log')
+    ax.set_yscale(y_scale)
     ax.legend()
     ax.set_title(title)
     figure.set_tight_layout(True)
