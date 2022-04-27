@@ -2,21 +2,14 @@ import os
 from griddly import GymWrapperFactory, gd, GymWrapper
 from visualiser import plot_empowerment_landscape, build_landscape, emp_map_to_str
 import game_configuration
+from create_griddly_env import create_griddly_env
 
 if __name__ == '__main__':
-    wrapper = GymWrapperFactory()
-    name = 'trust'
-    current_path = os.path.dirname(os.path.realpath(__file__))
-    env = GymWrapper(current_path + '/griddly_descriptions/testbed_trust.yaml',
-                     player_observer_type=gd.ObserverType.VECTOR,
-                     global_observer_type=gd.ObserverType.SPRITE_2D,
-                     level=0)
-
-    player_id = 2
-
     data_object = game_configuration.load_conf_dict('trust')
     game_conf = game_configuration.game_conf_from_data_dict(data_object)
+    env = create_griddly_env(game_conf.griddly_description)
 
+    player_id = 2
     emp_pairs = [(emp.actor, emp.perceptor) for emp in game_conf.agents[player_id-1].empowerment_pairs]
     
     print('With trust correction:')
